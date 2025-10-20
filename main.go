@@ -12,14 +12,12 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func getDBConnStr() string {
-	host := os.Getenv("DB_HOST")
+func getDBConnStr(host string, dbName string) string {
 	port := os.Getenv("DB_PORT")
 	user := os.Getenv("DB_USER")
 	password := os.Getenv("DB_PASSWORD")
-	dbname := os.Getenv("DB_NAME")
 
-	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s", user, password, host, port, dbname)
+	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s", user, password, host, port, dbName)
 }
 
 func setupRoutes(mux *http.ServeMux, conn *pgx.Conn, validator *validator.Validate) {
@@ -60,7 +58,7 @@ func setupRoutes(mux *http.ServeMux, conn *pgx.Conn, validator *validator.Valida
 
 func main() {
 	ctx := context.Background()
-	conn, err := pgx.Connect(ctx, getDBConnStr())
+	conn, err := pgx.Connect(ctx, getDBConnStr(os.Getenv("DB_HOST"), os.Getenv("DB_NAME")))
 	if err != nil {
 		log.Fatal("Unable to connect to database:", err)
 	}

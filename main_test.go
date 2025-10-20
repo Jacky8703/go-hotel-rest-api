@@ -20,25 +20,12 @@ import (
 )
 
 var (
+	testDBName   = "testdb"
+	populatePath = "populate.sql"
 	conn         *pgx.Conn
 	baseURI      string
-	populatePath string
 	client       = &http.Client{}
 )
-
-func getLocalDBConnStr(admin bool) string {
-	host := os.Getenv("TEST_DB_HOST")
-	port := os.Getenv("TEST_DB_PORT")
-	user := os.Getenv("TEST_DB_USER")
-	password := os.Getenv("TEST_DB_PASSWORD")
-	dbname := os.Getenv("TEST_DB_NAME")
-
-	if admin {
-		dbname = os.Getenv("DB_NAME")
-	}
-
-	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s", user, password, host, port, dbname)
-}
 
 func TestMain(m *testing.M) {
 	// connect to the admin database and create a new test database
@@ -47,26 +34,26 @@ func TestMain(m *testing.M) {
 		fmt.Println("Error loading .env file:", err)
 		os.Exit(1)
 	}
-	populatePath = os.Getenv("SQL_POPULATE_PATH")
 	ctx := context.Background()
-	adminConn, err := pgx.Connect(ctx, getLocalDBConnStr(true))
+	adminConnStr := getDBConnStr("localhost", os.Getenv("DB_NAME"))
+	adminConn, err := pgx.Connect(ctx, adminConnStr)
 	if err != nil {
 		fmt.Println("Unable to connect to admin database:", err)
 		os.Exit(1)
 	}
 	defer adminConn.Close(ctx)
 
-	_, err = adminConn.Exec(ctx, "DROP DATABASE IF EXISTS testdb")
+	_, err = adminConn.Exec(ctx, fmt.Sprintf("DROP DATABASE IF EXISTS %s", testDBName))
 	if err != nil {
 		fmt.Println("Unable to drop test database:", err)
 		os.Exit(1)
 	}
-	_, err = adminConn.Exec(ctx, "CREATE DATABASE testdb TEMPLATE temp_postgres")
+	_, err = adminConn.Exec(ctx, fmt.Sprintf("CREATE DATABASE %s TEMPLATE temp_postgres", testDBName))
 	if err != nil {
 		fmt.Println("Unable to create test database:", err)
 		os.Exit(1)
 	}
-	conn, err = pgx.Connect(ctx, getLocalDBConnStr(false))
+	conn, err = pgx.Connect(ctx, getDBConnStr("localhost", testDBName))
 	if err != nil {
 		fmt.Println("Unable to connect to test database:", err)
 		os.Exit(1)
