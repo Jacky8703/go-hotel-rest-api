@@ -15,7 +15,6 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5"
-	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,11 +28,6 @@ var (
 
 func TestMain(m *testing.M) {
 	// connect to the admin database and create a new test database
-	err := godotenv.Load()
-	if err != nil {
-		fmt.Println("Error loading .env file:", err)
-		os.Exit(1)
-	}
 	ctx := context.Background()
 	adminConnStr := getDBConnStr("localhost", os.Getenv("DB_NAME"))
 	adminConn, err := pgx.Connect(ctx, adminConnStr)
