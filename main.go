@@ -69,8 +69,12 @@ func main() {
 	validator := validator.New()
 	mux := http.NewServeMux()
 	setupRoutes(mux, conn, validator)
-	fmt.Printf("Server listening on http://%s:%s\n", os.Getenv("SERVER_HOST"), os.Getenv("SERVER_PORT"))
-	http.ListenAndServe(":"+os.Getenv("SERVER_PORT"), mux)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	fmt.Printf("Server listening on http://0.0.0.0:%s\n", port)
+	http.ListenAndServe("0.0.0.0:"+port, mux)
 }
 
 func helloWorld(w http.ResponseWriter, r *http.Request) {
