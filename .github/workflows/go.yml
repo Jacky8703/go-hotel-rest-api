@@ -32,11 +32,6 @@ jobs:
       - name: Install dependencies
         run: go mod download
 
-      - name: Create template database
-        run: |
-          PGPASSWORD=${{ secrets.DB_PASSWORD }} psql -h localhost -U ${{ secrets.DB_USER }} -d ${{ secrets.DB_NAME }} -c "CREATE DATABASE temp_postgres;"
-          PGPASSWORD=${{ secrets.DB_PASSWORD }} psql -h localhost -U ${{ secrets.DB_USER }} -d temp_postgres -f SQL.sql
-
       - name: Run tests
         env:
           DB_PORT: 5432

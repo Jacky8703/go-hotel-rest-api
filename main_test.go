@@ -20,6 +20,7 @@ import (
 
 var (
 	testDBName   = "testdb"
+	schemaPath   = "schema.sql"
 	populatePath = "populate.sql"
 	conn         *pgx.Conn
 	baseURI      string
@@ -42,7 +43,7 @@ func TestMain(m *testing.M) {
 		fmt.Println("Unable to drop test database:", err)
 		os.Exit(1)
 	}
-	_, err = adminConn.Exec(ctx, fmt.Sprintf("CREATE DATABASE %s TEMPLATE temp_postgres", testDBName))
+	_, err = adminConn.Exec(ctx, fmt.Sprintf("CREATE DATABASE %s", testDBName))
 	if err != nil {
 		fmt.Println("Unable to create test database:", err)
 		os.Exit(1)
@@ -53,6 +54,18 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 	defer conn.Close(ctx)
+
+	// populate the database schema and initial data
+	sql, err := os.ReadFile(schemaPath)
+	if err != nil {
+		fmt.Printf("Unable to read %s: %v\n", schemaPath, err)
+		os.Exit(1)
+	}
+	_, err = conn.Exec(ctx, string(sql))
+	if err != nil {
+		fmt.Printf("Unable to execute %s: %v\n", schemaPath, err)
+		os.Exit(1)
+	}
 
 	val := validator.New()
 	mux := http.NewServeMux()

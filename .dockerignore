@@ -1,6 +1,6 @@
 .env
 populate.sql
 main_test.go
-SQL.sql
+schema.sql
 main_test.go
 ER.drawio
