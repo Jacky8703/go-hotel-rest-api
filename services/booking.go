@@ -34,6 +34,7 @@ func UpdateBookingByID(ctx context.Context, conn *pgx.Conn, booking *models.Book
 }
 
 func PatchBookingByID(ctx context.Context, conn *pgx.Conn, bookingID int, patch models.BookingPatch) error {
+	// first check that the patch is valid
 	oldBooking, err := dal.GetBookingByID(ctx, conn, bookingID)
 	if err != nil {
 		return err

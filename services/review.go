@@ -34,6 +34,7 @@ func UpdateReviewByID(ctx context.Context, conn *pgx.Conn, review *models.Review
 }
 
 func PatchReviewByID(ctx context.Context, conn *pgx.Conn, reviewID int, patch models.ReviewPatch) error {
+	// first check that the patch is valid
 	oldReview, err := dal.GetReviewByID(ctx, conn, reviewID)
 	if err != nil {
 		return err
@@ -61,7 +62,7 @@ func PatchReviewByID(ctx context.Context, conn *pgx.Conn, reviewID int, patch mo
 		return err
 	}
 
-	return dal.UpdateReviewByID(ctx, conn, oldReview)
+	return dal.PatchReviewByID(ctx, conn, reviewID, patch)
 }
 
 func DeleteReviewByID(ctx context.Context, conn *pgx.Conn, reviewID int) error {
