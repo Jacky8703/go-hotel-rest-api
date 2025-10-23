@@ -187,6 +187,13 @@ func TestCustomerEndpoints(t *testing.T) {
 		patch := map[string]any{"name": "PatchedName"}
 		resp, _ := makeRequest(t, http.MethodPatch, fmt.Sprintf("%s/%d", customerURI, newCustomer.ID), patch)
 		require.Equal(t, http.StatusNoContent, resp.StatusCode)
+
+		resp, body := makeRequest(t, http.MethodGet, fmt.Sprintf("%s/%d", customerURI, newCustomer.ID), nil)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		var customer models.Customer
+		err := json.Unmarshal(body, &customer)
+		require.NoError(t, err)
+		require.Equal(t, "PatchedName", customer.Name)
 	})
 	t.Run("DELETE/customers/{id}", func(t *testing.T) {
 		resetDatabase(t)
@@ -303,6 +310,13 @@ func TestBookingEndpoints(t *testing.T) {
 		patch := map[string]any{"code": "PatchedCode123"}
 		resp, _ := makeRequest(t, http.MethodPatch, fmt.Sprintf("%s/%d", bookingURI, newBooking.ID), patch)
 		require.Equal(t, http.StatusNoContent, resp.StatusCode)
+
+		resp, body := makeRequest(t, http.MethodGet, fmt.Sprintf("%s/%d", bookingURI, newBooking.ID), nil)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		var booking models.BookingDTO
+		err := json.Unmarshal(body, &booking)
+		require.NoError(t, err)
+		require.Equal(t, "PatchedCode123", booking.Code)
 	})
 	t.Run("DELETE/bookings/{id}", func(t *testing.T) {
 		resetDatabase(t)
@@ -426,6 +440,13 @@ func TestReviewEndpoints(t *testing.T) {
 		patch := map[string]any{"comment": "PatchedComment"}
 		resp, _ := makeRequest(t, http.MethodPatch, fmt.Sprintf("%s/%d", reviewURI, newReview.BookingID), patch)
 		require.Equal(t, http.StatusNoContent, resp.StatusCode)
+
+		resp, body := makeRequest(t, http.MethodGet, fmt.Sprintf("%s/%d", reviewURI, newReview.BookingID), nil)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		var review models.ReviewDTO
+		err := json.Unmarshal(body, &review)
+		require.NoError(t, err)
+		require.Equal(t, "PatchedComment", review.Comment)
 	})
 	t.Run("DELETE/reviews/{id}", func(t *testing.T) {
 		resetDatabase(t)
@@ -497,6 +518,13 @@ func TestRoomEndpoints(t *testing.T) {
 		patch := map[string]any{"price": newRoom.Price + 20}
 		resp, _ := makeRequest(t, http.MethodPatch, fmt.Sprintf("%s/%d", roomURI, newRoom.ID), patch)
 		require.Equal(t, http.StatusNoContent, resp.StatusCode)
+
+		resp, body := makeRequest(t, http.MethodGet, fmt.Sprintf("%s/%d", roomURI, newRoom.ID), nil)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		var room models.Room
+		err := json.Unmarshal(body, &room)
+		require.NoError(t, err)
+		require.Equal(t, newRoom.Price+20, room.Price)
 	})
 	t.Run("DELETE/rooms/{id}", func(t *testing.T) {
 		resetDatabase(t)
