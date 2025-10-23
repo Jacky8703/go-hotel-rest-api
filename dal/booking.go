@@ -51,7 +51,7 @@ func UpdateBookingByID(ctx context.Context, conn *pgx.Conn, booking *models.Book
 }
 
 func PatchBookingByID(ctx context.Context, conn *pgx.Conn, bookingID int, patch models.BookingPatch) error {
-	query, args := createPatchQuery("booking", patch, bookingID)
+	query, args := createPatchQuery("booking", patch, "id", bookingID)
 	tag, err := conn.Exec(ctx, query, args...)
 	if tag.RowsAffected() == 0 {
 		return pgx.ErrNoRows
@@ -67,7 +67,7 @@ func DeleteBookingByID(ctx context.Context, conn *pgx.Conn, bookingID int) error
 	return err
 }
 
-func createPatchQuery(table string, patch models.Patch, id int) (string, []any) {
+func createPatchQuery(table string, patch models.Patch, idName string, id int) (string, []any) {
 	var changes []string
 	var args []any
 	argIndex := 1
@@ -86,7 +86,7 @@ func createPatchQuery(table string, patch models.Patch, id int) (string, []any) 
 			argIndex++
 		}
 	}
-	query := fmt.Sprintf("UPDATE %s SET %s WHERE id = $%d", table, strings.Join(changes, ", "), argIndex)
+	query := fmt.Sprintf("UPDATE %s SET %s WHERE %s = $%d", table, strings.Join(changes, ", "), idName, argIndex)
 	args = append(args, id)
 	return query, args
 }

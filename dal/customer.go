@@ -48,7 +48,7 @@ func UpdateCustomerByID(ctx context.Context, conn *pgx.Conn, customer *models.Cu
 }
 
 func PatchCustomerByID(ctx context.Context, conn *pgx.Conn, customerID int, patch models.CustomerPatch) error {
-	query, args := createPatchQuery("customer", patch, customerID)
+	query, args := createPatchQuery("customer", patch, "id", customerID)
 	tag, err := conn.Exec(ctx, query, args...)
 	if tag.RowsAffected() == 0 {
 		return pgx.ErrNoRows

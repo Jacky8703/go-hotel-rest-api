@@ -48,7 +48,7 @@ func UpdateRoomByID(ctx context.Context, conn *pgx.Conn, room *models.Room) erro
 }
 
 func PatchRoomByID(ctx context.Context, conn *pgx.Conn, roomID int, patch models.RoomPatch) error {
-	query, args := createPatchQuery("room", patch, roomID)
+	query, args := createPatchQuery("room", patch, "id", roomID)
 	tag, err := conn.Exec(ctx, query, args...)
 	if tag.RowsAffected() == 0 {
 		return pgx.ErrNoRows
