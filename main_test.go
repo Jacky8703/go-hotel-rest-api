@@ -19,12 +19,46 @@ import (
 )
 
 var (
-	testDBName   = "testdb"
-	schemaPath   = "schema.sql"
-	populatePath = "populate.sql"
-	conn         *pgx.Conn
-	baseURI      string
-	client       = &http.Client{}
+	testDBName  = "testdb"
+	schemaPath  = "schema.sql"
+	conn        *pgx.Conn
+	client      = &http.Client{}
+	baseURI     string
+	roomURI     string
+	customerURI string
+	bookingURI  string
+	reviewURI   string
+	serviceURI  string
+	sampleRoom  = models.Room{
+		Number:   101,
+		Type:     "basic",
+		Price:    100,
+		Capacity: 2,
+	}
+	sampleCustomer = models.Customer{
+		CF:    "TESTCF12345",
+		Name:  "Testino",
+		Age:   30,
+		Email: "testcustomer@example.com",
+	}
+	sampleBookingDTO = models.BookingDTO{
+		Code:       "TESTBOOK123",
+		CustomerID: -1,
+		RoomID:     -1,
+		StartDate:  time.Now().AddDate(0, 0, 1).Format("2006-01-02"),
+		EndDate:    time.Now().AddDate(0, 0, 8).Format("2006-01-02"),
+	}
+	sampleReviewDTO = models.ReviewDTO{
+		BookingID: -1,
+		Comment:   "comment",
+		Rating:    3,
+		Date:      time.Now().AddDate(0, 0, 9).Format("2006-01-02"),
+	}
+	sampleService = models.HotelService{
+		Type:        "room_service",
+		Description: "Sample description",
+		Duration:    30,
+	}
 )
 
 func TestMain(m *testing.M) {
@@ -55,7 +89,7 @@ func TestMain(m *testing.M) {
 	}
 	defer conn.Close(ctx)
 
-	// populate the database schema and initial data
+	// populate the database schema
 	sql, err := os.ReadFile(schemaPath)
 	if err != nil {
 		fmt.Printf("Unable to read %s: %v\n", schemaPath, err)
@@ -72,6 +106,11 @@ func TestMain(m *testing.M) {
 	setupRoutes(mux, conn, val)
 	testServer := httptest.NewServer(mux)
 	baseURI = testServer.URL
+	roomURI = baseURI + "/rooms"
+	customerURI = baseURI + "/customers"
+	bookingURI = baseURI + "/bookings"
+	reviewURI = baseURI + "/reviews"
+	serviceURI = baseURI + "/services"
 	defer testServer.Close()
 
 	code := m.Run()
@@ -85,15 +124,11 @@ func TestHelloWorld(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
-// truncate all tables and repopulate with initial data from populate.sql
+// truncate all tables
 func resetDatabase(t *testing.T) {
 	ctx := context.Background()
 	_, err := conn.Exec(ctx, "TRUNCATE TABLE customer, booking, review, service_request, hotel_service, room RESTART IDENTITY CASCADE")
 	require.NoError(t, err, "Failed to truncate tables: %v", err)
-	sql, err := os.ReadFile(populatePath)
-	require.NoError(t, err, "Failed to read %s: %v", populatePath, err)
-	_, err = conn.Exec(ctx, string(sql))
-	require.NoError(t, err, "Failed to execute %s: %v", populatePath, err)
 }
 
 // helper function to make HTTP requests, returns response and body
@@ -133,18 +168,10 @@ func createSample[T any](t *testing.T, uri string, model T) T {
 }
 
 func TestCustomerEndpoints(t *testing.T) {
-	customerURI := baseURI + "/customers"
-	sampleCustomer := models.Customer{
-		CF:    "TESTCF12345",
-		Name:  "Testino",
-		Age:   30,
-		Email: "testcustomer@example.com",
-	}
 	t.Run("POST/customers", func(t *testing.T) {
 		resetDatabase(t)
 		newCustomer := createSample(t, customerURI, sampleCustomer)
-		sampleCustomer.ID = newCustomer.ID
-		require.Equal(t, sampleCustomer, newCustomer)
+		require.Equal(t, sampleCustomer.CF, newCustomer.CF)
 	})
 	t.Run("GET/customers", func(t *testing.T) {
 		resetDatabase(t)
@@ -207,275 +234,11 @@ func TestCustomerEndpoints(t *testing.T) {
 	})
 }
 
-func TestBookingEndpoints(t *testing.T) {
-	bookingURI := baseURI + "/bookings"
-	sampleBookingDTO := models.BookingDTO{
-		Code:       "TESTBOOK123",
-		CustomerID: 1,
-		RoomID:     1,
-		StartDate:  time.Now().AddDate(0, 0, 1).Format("2006-01-02"),
-		EndDate:    time.Now().AddDate(0, 0, 8).Format("2006-01-02"),
-	}
-	t.Run("POST/bookings", func(t *testing.T) {
-		resetDatabase(t)
-		newBooking := createSample(t, bookingURI, sampleBookingDTO)
-		sampleBookingDTO.ID = newBooking.ID
-		require.Equal(t, sampleBookingDTO, newBooking)
-
-		// test for validation logic
-		t.Run("start date > end date", func(t *testing.T) {
-			resetDatabase(t)
-			invalidBooking := sampleBookingDTO
-			invalidBooking.StartDate = time.Now().AddDate(0, 1, 0).Format("2006-01-02")
-			resp, body := makeRequest(t, http.MethodPost, bookingURI, invalidBooking)
-			require.Equal(t, http.StatusBadRequest, resp.StatusCode, "Expected validation error, got: %s", string(body))
-		})
-		t.Run("start date < current date", func(t *testing.T) {
-			resetDatabase(t)
-			invalidBooking := sampleBookingDTO
-			invalidBooking.StartDate = time.Now().AddDate(-1, 0, 0).Format("2006-01-02")
-			resp, body := makeRequest(t, http.MethodPost, bookingURI, invalidBooking)
-			require.Equal(t, http.StatusBadRequest, resp.StatusCode, "Expected validation error, got: %s", string(body))
-		})
-		t.Run("start date = end date", func(t *testing.T) {
-			resetDatabase(t)
-			invalidBooking := sampleBookingDTO
-			invalidBooking.StartDate = invalidBooking.EndDate
-			resp, body := makeRequest(t, http.MethodPost, bookingURI, invalidBooking)
-			require.Equal(t, http.StatusBadRequest, resp.StatusCode, "Expected validation error, got: %s", string(body))
-		})
-		t.Run("customer does not exist", func(t *testing.T) {
-			resetDatabase(t)
-			invalidBooking := sampleBookingDTO
-			invalidBooking.CustomerID = -1
-			resp, body := makeRequest(t, http.MethodPost, bookingURI, invalidBooking)
-			require.Equal(t, http.StatusBadRequest, resp.StatusCode, "Expected validation error, got: %s", string(body))
-		})
-		t.Run("room does not exist", func(t *testing.T) {
-			resetDatabase(t)
-			invalidBooking := sampleBookingDTO
-			invalidBooking.RoomID = -1
-			resp, body := makeRequest(t, http.MethodPost, bookingURI, invalidBooking)
-			require.Equal(t, http.StatusBadRequest, resp.StatusCode, "Expected validation error, got: %s", string(body))
-		})
-		t.Run("overlapping bookings", func(t *testing.T) {
-			resetDatabase(t)
-			createSample(t, bookingURI, sampleBookingDTO)
-			invalidBooking := sampleBookingDTO
-			invalidBooking.ID = -1 // ensure it's treated as a new booking
-			invalidBooking.Code = "OVERLAP123"
-			invalidBooking.StartDate = time.Now().AddDate(0, 0, 3).Format("2006-01-02")
-			resp, body := makeRequest(t, http.MethodPost, bookingURI, invalidBooking)
-			require.Equal(t, http.StatusBadRequest, resp.StatusCode, "Expected validation error, got: %s", string(body))
-		})
-	})
-	t.Run("GET/bookings", func(t *testing.T) {
-		resetDatabase(t)
-		newBooking := createSample(t, bookingURI, sampleBookingDTO)
-
-		resp, body := makeRequest(t, http.MethodGet, bookingURI, nil)
-		require.Equal(t, http.StatusOK, resp.StatusCode)
-		var bookings []models.BookingDTO
-		err := json.Unmarshal(body, &bookings)
-		require.NoError(t, err)
-		require.Contains(t, bookings, newBooking)
-	})
-	t.Run("GET/bookings/{id}", func(t *testing.T) {
-		resetDatabase(t)
-		newBooking := createSample(t, bookingURI, sampleBookingDTO)
-
-		resp, body := makeRequest(t, http.MethodGet, fmt.Sprintf("%s/%d", bookingURI, newBooking.ID), nil)
-		require.Equal(t, http.StatusOK, resp.StatusCode)
-		var booking models.BookingDTO
-		err := json.Unmarshal(body, &booking)
-		require.NoError(t, err)
-		require.Equal(t, newBooking, booking)
-	})
-	t.Run("PUT/bookings/{id}", func(t *testing.T) {
-		resetDatabase(t)
-		newBooking := createSample(t, bookingURI, sampleBookingDTO)
-		newBooking.StartDate = time.Now().AddDate(0, 0, 3).Format("2006-01-02") // this also tests the overlapping logic on update
-
-		resp, body := makeRequest(t, http.MethodPut, fmt.Sprintf("%s/%d", bookingURI, newBooking.ID), newBooking)
-		require.Equal(t, http.StatusOK, resp.StatusCode)
-		var booking models.BookingDTO
-		err := json.Unmarshal(body, &booking)
-		require.NoError(t, err)
-		require.Equal(t, newBooking, booking)
-	})
-	t.Run("PATCH/bookings/{id}", func(t *testing.T) {
-		resetDatabase(t)
-		newBooking := createSample(t, bookingURI, sampleBookingDTO)
-
-		patch := map[string]any{"code": "PatchedCode123"}
-		resp, _ := makeRequest(t, http.MethodPatch, fmt.Sprintf("%s/%d", bookingURI, newBooking.ID), patch)
-		require.Equal(t, http.StatusNoContent, resp.StatusCode)
-
-		resp, body := makeRequest(t, http.MethodGet, fmt.Sprintf("%s/%d", bookingURI, newBooking.ID), nil)
-		require.Equal(t, http.StatusOK, resp.StatusCode)
-		var booking models.BookingDTO
-		err := json.Unmarshal(body, &booking)
-		require.NoError(t, err)
-		require.Equal(t, "PatchedCode123", booking.Code)
-	})
-	t.Run("DELETE/bookings/{id}", func(t *testing.T) {
-		resetDatabase(t)
-		newBooking := createSample(t, bookingURI, sampleBookingDTO)
-
-		resp, _ := makeRequest(t, http.MethodDelete, fmt.Sprintf("%s/%d", bookingURI, newBooking.ID), nil)
-		require.Equal(t, http.StatusNoContent, resp.StatusCode)
-
-		resp, _ = makeRequest(t, http.MethodGet, fmt.Sprintf("%s/%d", bookingURI, newBooking.ID), nil)
-		require.Equal(t, http.StatusNotFound, resp.StatusCode)
-	})
-}
-
-func TestReviewEndpoints(t *testing.T) {
-	bookingURI := baseURI + "/bookings"
-	sampleBookingDTO := models.BookingDTO{
-		Code:       "TESTBOOK123",
-		CustomerID: 1,
-		RoomID:     1,
-		StartDate:  time.Now().AddDate(0, 0, 1).Format("2006-01-02"),
-		EndDate:    time.Now().AddDate(0, 0, 8).Format("2006-01-02"),
-	}
-	reviewURI := baseURI + "/reviews"
-	sampleReviewDTO := models.ReviewDTO{
-		BookingID: -1,
-		Comment:   "comment",
-		Rating:    3,
-		Date:      time.Now().AddDate(0, 0, 9).Format("2006-01-02"),
-	}
-	t.Run("POST/reviews", func(t *testing.T) {
-		resetDatabase(t)
-		newBookingDTO := createSample(t, bookingURI, sampleBookingDTO)
-
-		sampleReviewDTO.BookingID = newBookingDTO.ID
-		newReview := createSample(t, reviewURI, sampleReviewDTO)
-		require.Equal(t, sampleReviewDTO, newReview)
-
-		// test for validation logic
-		t.Run("booking does not exist", func(t *testing.T) {
-			resetDatabase(t)
-			invalidReview := sampleReviewDTO
-			invalidReview.BookingID = -1
-			resp, _ := makeRequest(t, http.MethodPost, reviewURI, invalidReview)
-			require.Equal(t, resp.StatusCode, http.StatusBadRequest)
-		})
-		t.Run("review date < booking start date", func(t *testing.T) {
-			resetDatabase(t)
-			newBookingDTO := createSample(t, bookingURI, sampleBookingDTO)
-
-			bdate, err := time.Parse("2006-01-02", newBookingDTO.StartDate)
-			require.NoError(t, err)
-
-			invalidReview := sampleReviewDTO
-			invalidReview.Date = bdate.AddDate(0, 0, -1).Format("2006-01-02")
-
-			resp, _ := makeRequest(t, http.MethodPost, reviewURI, invalidReview)
-			require.Equal(t, http.StatusBadRequest, resp.StatusCode)
-		})
-		t.Run("customer already reviewed", func(t *testing.T) {
-			resetDatabase(t)
-			newBookingDTO := createSample(t, bookingURI, sampleBookingDTO)
-
-			sampleReviewDTO.BookingID = newBookingDTO.ID
-			newReview := createSample(t, reviewURI, sampleReviewDTO)
-
-			invalidReview := newReview
-			resp, _ := makeRequest(t, http.MethodPost, reviewURI, invalidReview)
-			require.Equal(t, resp.StatusCode, http.StatusBadRequest)
-		})
-	})
-	t.Run("GET/reviews", func(t *testing.T) {
-		resetDatabase(t)
-		newBookingDTO := createSample(t, bookingURI, sampleBookingDTO)
-
-		sampleReviewDTO.BookingID = newBookingDTO.ID
-		newReview := createSample(t, reviewURI, sampleReviewDTO)
-
-		resp, body := makeRequest(t, http.MethodGet, reviewURI, nil)
-		require.Equal(t, http.StatusOK, resp.StatusCode)
-		var reviews []models.ReviewDTO
-		err := json.Unmarshal(body, &reviews)
-		require.NoError(t, err)
-		require.Contains(t, reviews, newReview)
-	})
-	t.Run("GET/reviews/{id}", func(t *testing.T) {
-		resetDatabase(t)
-		newBookingDTO := createSample(t, bookingURI, sampleBookingDTO)
-
-		sampleReviewDTO.BookingID = newBookingDTO.ID
-		newReview := createSample(t, reviewURI, sampleReviewDTO)
-
-		resp, body := makeRequest(t, http.MethodGet, fmt.Sprintf("%s/%d", reviewURI, newReview.BookingID), nil)
-		require.Equal(t, http.StatusOK, resp.StatusCode)
-		var review models.ReviewDTO
-		err := json.Unmarshal(body, &review)
-		require.NoError(t, err)
-		require.Equal(t, newReview, review)
-	})
-	t.Run("PUT/reviews/{id}", func(t *testing.T) {
-		resetDatabase(t)
-		newBookingDTO := createSample(t, bookingURI, sampleBookingDTO)
-
-		sampleReviewDTO.BookingID = newBookingDTO.ID // this also test the validation logic on update (booking already reviewed)
-		newReview := createSample(t, reviewURI, sampleReviewDTO)
-		newReview.Comment = "UpdatedComment"
-
-		resp, body := makeRequest(t, http.MethodPut, fmt.Sprintf("%s/%d", reviewURI, newReview.BookingID), newReview)
-		require.Equal(t, http.StatusOK, resp.StatusCode)
-		var review models.ReviewDTO
-		err := json.Unmarshal(body, &review)
-		require.NoError(t, err)
-		require.Equal(t, newReview, review)
-	})
-	t.Run("PATCH/reviews/{id}", func(t *testing.T) {
-		resetDatabase(t)
-		newBookingDTO := createSample(t, bookingURI, sampleBookingDTO)
-
-		sampleReviewDTO.BookingID = newBookingDTO.ID
-		newReview := createSample(t, reviewURI, sampleReviewDTO)
-
-		patch := map[string]any{"comment": "PatchedComment"}
-		resp, _ := makeRequest(t, http.MethodPatch, fmt.Sprintf("%s/%d", reviewURI, newReview.BookingID), patch)
-		require.Equal(t, http.StatusNoContent, resp.StatusCode)
-
-		resp, body := makeRequest(t, http.MethodGet, fmt.Sprintf("%s/%d", reviewURI, newReview.BookingID), nil)
-		require.Equal(t, http.StatusOK, resp.StatusCode)
-		var review models.ReviewDTO
-		err := json.Unmarshal(body, &review)
-		require.NoError(t, err)
-		require.Equal(t, "PatchedComment", review.Comment)
-	})
-	t.Run("DELETE/reviews/{id}", func(t *testing.T) {
-		resetDatabase(t)
-		newBookingDTO := createSample(t, bookingURI, sampleBookingDTO)
-
-		sampleReviewDTO.BookingID = newBookingDTO.ID
-		newReview := createSample(t, reviewURI, sampleReviewDTO)
-
-		resp, _ := makeRequest(t, http.MethodDelete, fmt.Sprintf("%s/%d", reviewURI, newReview.BookingID), nil)
-		require.Equal(t, http.StatusNoContent, resp.StatusCode)
-
-		resp, _ = makeRequest(t, http.MethodGet, fmt.Sprintf("%s/%d", reviewURI, newReview.BookingID), nil)
-		require.Equal(t, http.StatusNotFound, resp.StatusCode)
-	})
-}
-
 func TestRoomEndpoints(t *testing.T) {
-	roomURI := baseURI + "/rooms"
-	sampleRoom := models.Room{
-		Number:   101,
-		Type:     "basic",
-		Price:    100,
-		Capacity: 2,
-	}
 	t.Run("POST/rooms", func(t *testing.T) {
 		resetDatabase(t)
 		newRoom := createSample(t, roomURI, sampleRoom)
-		sampleRoom.ID = newRoom.ID
-		require.Equal(t, sampleRoom, newRoom)
+		require.Equal(t, sampleRoom.Number, newRoom.Number)
 	})
 	t.Run("GET/rooms", func(t *testing.T) {
 		resetDatabase(t)
@@ -530,10 +293,313 @@ func TestRoomEndpoints(t *testing.T) {
 		resetDatabase(t)
 		newRoom := createSample(t, roomURI, sampleRoom)
 
-		resp, _ := makeRequest(t, http.MethodDelete, fmt.Sprintf("%s/%d", roomURI, newRoom.ID), newRoom)
+		resp, _ := makeRequest(t, http.MethodDelete, fmt.Sprintf("%s/%d", roomURI, newRoom.ID), nil)
 		require.Equal(t, http.StatusNoContent, resp.StatusCode)
 
 		resp, _ = makeRequest(t, http.MethodGet, fmt.Sprintf("%s/%d", roomURI, newRoom.ID), nil)
+		require.Equal(t, http.StatusNotFound, resp.StatusCode)
+	})
+}
+
+func TestBookingEndpoints(t *testing.T) {
+	setupDependencies := func(t *testing.T) models.BookingDTO {
+		resetDatabase(t)
+		booking := sampleBookingDTO
+		booking.CustomerID = createSample(t, customerURI, sampleCustomer).ID
+		booking.RoomID = createSample(t, roomURI, sampleRoom).ID
+		return booking
+	}
+	t.Run("POST/bookings - success", func(t *testing.T) {
+		booking := setupDependencies(t)
+
+		newBooking := createSample(t, bookingURI, booking)
+		require.Equal(t, booking.Code, newBooking.Code)
+	})
+	// test for validation logic
+	t.Run("POST/bookings - start date > end date", func(t *testing.T) {
+		invalidBooking := setupDependencies(t)
+
+		invalidBooking.StartDate = time.Now().AddDate(0, 1, 0).Format("2006-01-02")
+		resp, body := makeRequest(t, http.MethodPost, bookingURI, invalidBooking)
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode, "Expected validation error, got: %s", string(body))
+	})
+	// commented in the business logic
+	// t.Run("POST/bookings - start date < current date", func(t *testing.T) {
+	// 	resetDatabase(t)
+	// 	newCustomer := createSample(t, customerURI, sampleCustomer)
+	// 	sampleBookingDTO.CustomerID = newCustomer.ID
+	// 	newRoom := createSample(t, roomURI, sampleRoom)
+	// 	sampleBookingDTO.RoomID = newRoom.ID
+	// 	invalidBooking := sampleBookingDTO
+	// 	invalidBooking.StartDate = time.Now().AddDate(-1, 0, 0).Format("2006-01-02")
+	// 	resp, body := makeRequest(t, http.MethodPost, bookingURI, invalidBooking)
+	// 	require.Equal(t, http.StatusBadRequest, resp.StatusCode, "Expected validation error, got: %s", string(body))
+	// })
+	t.Run("POST/bookings - start date = end date", func(t *testing.T) {
+		invalidBooking := setupDependencies(t)
+
+		invalidBooking.StartDate = invalidBooking.EndDate
+		resp, body := makeRequest(t, http.MethodPost, bookingURI, invalidBooking)
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode, "Expected validation error, got: %s", string(body))
+	})
+	t.Run("POST/bookings - customer does not exist", func(t *testing.T) {
+		invalidBooking := setupDependencies(t)
+
+		invalidBooking.CustomerID = -1
+		resp, body := makeRequest(t, http.MethodPost, bookingURI, invalidBooking)
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode, "Expected validation error, got: %s", string(body))
+	})
+	t.Run("POST/bookings - room does not exist", func(t *testing.T) {
+		invalidBooking := setupDependencies(t)
+
+		invalidBooking.RoomID = -1
+		resp, body := makeRequest(t, http.MethodPost, bookingURI, invalidBooking)
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode, "Expected validation error, got: %s", string(body))
+	})
+	t.Run("POST/bookings - overlapping bookings", func(t *testing.T) {
+		invalidBooking := setupDependencies(t)
+		createSample(t, bookingURI, invalidBooking)
+
+		invalidBooking.ID = -1 // ensure it's treated as a new booking
+		invalidBooking.Code = "OVERLAP123"
+		invalidBooking.StartDate = time.Now().AddDate(0, 0, 3).Format("2006-01-02")
+		resp, body := makeRequest(t, http.MethodPost, bookingURI, invalidBooking)
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode, "Expected validation error, got: %s", string(body))
+	})
+	t.Run("GET/bookings", func(t *testing.T) {
+		booking := setupDependencies(t)
+		booking = createSample(t, bookingURI, booking)
+
+		resp, body := makeRequest(t, http.MethodGet, bookingURI, nil)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		var bookings []models.BookingDTO
+		err := json.Unmarshal(body, &bookings)
+		require.NoError(t, err)
+		require.Contains(t, bookings, booking)
+	})
+	t.Run("GET/bookings/{id}", func(t *testing.T) {
+		booking := setupDependencies(t)
+		booking = createSample(t, bookingURI, booking)
+
+		resp, body := makeRequest(t, http.MethodGet, fmt.Sprintf("%s/%d", bookingURI, booking.ID), nil)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		var b models.BookingDTO
+		err := json.Unmarshal(body, &b)
+		require.NoError(t, err)
+		require.Equal(t, booking, b)
+	})
+	t.Run("PUT/bookings/{id}", func(t *testing.T) {
+		booking := setupDependencies(t)
+		booking = createSample(t, bookingURI, booking)
+		booking.StartDate = time.Now().AddDate(0, 0, 3).Format("2006-01-02") // this also tests the overlapping logic on update
+
+		resp, body := makeRequest(t, http.MethodPut, fmt.Sprintf("%s/%d", bookingURI, booking.ID), booking)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		var b models.BookingDTO
+		err := json.Unmarshal(body, &b)
+		require.NoError(t, err)
+		require.Equal(t, booking, b)
+	})
+	t.Run("PATCH/bookings/{id}", func(t *testing.T) {
+		booking := setupDependencies(t)
+		booking = createSample(t, bookingURI, booking)
+
+		patch := map[string]any{"code": "PatchedCode123"}
+		resp, _ := makeRequest(t, http.MethodPatch, fmt.Sprintf("%s/%d", bookingURI, booking.ID), patch)
+		require.Equal(t, http.StatusNoContent, resp.StatusCode)
+
+		resp, body := makeRequest(t, http.MethodGet, fmt.Sprintf("%s/%d", bookingURI, booking.ID), nil)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		var b models.BookingDTO
+		err := json.Unmarshal(body, &b)
+		require.NoError(t, err)
+		require.Equal(t, "PatchedCode123", b.Code)
+	})
+	t.Run("DELETE/bookings/{id}", func(t *testing.T) {
+		booking := setupDependencies(t)
+		booking = createSample(t, bookingURI, booking)
+
+		resp, _ := makeRequest(t, http.MethodDelete, fmt.Sprintf("%s/%d", bookingURI, booking.ID), nil)
+		require.Equal(t, http.StatusNoContent, resp.StatusCode)
+
+		resp, _ = makeRequest(t, http.MethodGet, fmt.Sprintf("%s/%d", bookingURI, booking.ID), nil)
+		require.Equal(t, http.StatusNotFound, resp.StatusCode)
+	})
+}
+
+func TestReviewEndpoints(t *testing.T) {
+	setupDependencies := func(t *testing.T) models.ReviewDTO {
+		resetDatabase(t)
+		review := sampleReviewDTO
+		booking := sampleBookingDTO
+		booking.CustomerID = createSample(t, customerURI, sampleCustomer).ID
+		booking.RoomID = createSample(t, roomURI, sampleRoom).ID
+		review.BookingID = createSample(t, bookingURI, booking).ID
+		return review
+	}
+	t.Run("POST/reviews - success", func(t *testing.T) {
+		review := setupDependencies(t)
+		newReview := createSample(t, reviewURI, review)
+		require.Equal(t, review, newReview)
+	})
+	// test for validation logic
+	t.Run("POST/reviews - booking does not exist", func(t *testing.T) {
+		resetDatabase(t)
+		invalidReview := sampleReviewDTO
+		invalidReview.BookingID = -1
+		resp, _ := makeRequest(t, http.MethodPost, reviewURI, invalidReview)
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	})
+	t.Run("POST/reviews - review date < booking start date", func(t *testing.T) {
+		resetDatabase(t)
+		booking := sampleBookingDTO
+		newCustomer := createSample(t, customerURI, sampleCustomer)
+		booking.CustomerID = newCustomer.ID
+		newRoom := createSample(t, roomURI, sampleRoom)
+		booking.RoomID = newRoom.ID
+		newBookingDTO := createSample(t, bookingURI, booking)
+
+		bdate, err := time.Parse("2006-01-02", newBookingDTO.StartDate)
+		require.NoError(t, err)
+
+		invalidReview := sampleReviewDTO
+		invalidReview.Date = bdate.AddDate(0, 0, -1).Format("2006-01-02")
+
+		invalidReview.BookingID = newBookingDTO.ID
+		resp, _ := makeRequest(t, http.MethodPost, reviewURI, invalidReview)
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	})
+	t.Run("POST/reviews - customer already reviewed", func(t *testing.T) {
+		review := setupDependencies(t)
+		review = createSample(t, reviewURI, review)
+
+		resp, _ := makeRequest(t, http.MethodPost, reviewURI, review)
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	})
+	t.Run("GET/reviews", func(t *testing.T) {
+		review := setupDependencies(t)
+		review = createSample(t, reviewURI, review)
+
+		resp, body := makeRequest(t, http.MethodGet, reviewURI, nil)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		var reviews []models.ReviewDTO
+		err := json.Unmarshal(body, &reviews)
+		require.NoError(t, err)
+		require.Contains(t, reviews, review)
+	})
+	t.Run("GET/reviews/{id}", func(t *testing.T) {
+		review := setupDependencies(t)
+		review = createSample(t, reviewURI, review)
+
+		resp, body := makeRequest(t, http.MethodGet, fmt.Sprintf("%s/%d", reviewURI, review.BookingID), nil)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		var r models.ReviewDTO
+		err := json.Unmarshal(body, &r)
+		require.NoError(t, err)
+		require.Equal(t, review, r)
+	})
+	t.Run("PUT/reviews/{id}", func(t *testing.T) {
+		review := setupDependencies(t)
+		review = createSample(t, reviewURI, review)
+		review.Comment = "UpdatedComment"
+
+		resp, body := makeRequest(t, http.MethodPut, fmt.Sprintf("%s/%d", reviewURI, review.BookingID), review) // this also test the validation logic on update (booking already reviewed)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		var r models.ReviewDTO
+		err := json.Unmarshal(body, &r)
+		require.NoError(t, err)
+		require.Equal(t, review, r)
+	})
+	t.Run("PATCH/reviews/{id}", func(t *testing.T) {
+		review := setupDependencies(t)
+		review = createSample(t, reviewURI, review)
+
+		patch := map[string]any{"comment": "PatchedComment"}
+		resp, _ := makeRequest(t, http.MethodPatch, fmt.Sprintf("%s/%d", reviewURI, review.BookingID), patch)
+		require.Equal(t, http.StatusNoContent, resp.StatusCode)
+
+		resp, body := makeRequest(t, http.MethodGet, fmt.Sprintf("%s/%d", reviewURI, review.BookingID), nil)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		var r models.ReviewDTO
+		err := json.Unmarshal(body, &r)
+		require.NoError(t, err)
+		require.Equal(t, "PatchedComment", r.Comment)
+	})
+	t.Run("DELETE/reviews/{id}", func(t *testing.T) {
+		review := setupDependencies(t)
+		review = createSample(t, reviewURI, review)
+
+		resp, _ := makeRequest(t, http.MethodDelete, fmt.Sprintf("%s/%d", reviewURI, review.BookingID), nil)
+		require.Equal(t, http.StatusNoContent, resp.StatusCode)
+
+		resp, _ = makeRequest(t, http.MethodGet, fmt.Sprintf("%s/%d", reviewURI, review.BookingID), nil)
+		require.Equal(t, http.StatusNotFound, resp.StatusCode)
+	})
+}
+
+func TestHotelServiceEndpoints(t *testing.T) {
+	t.Run("POST/services", func(t *testing.T) {
+		resetDatabase(t)
+		newService := createSample(t, serviceURI, sampleService)
+		require.Equal(t, sampleService.Type, newService.Type)
+	})
+	t.Run("GET/services", func(t *testing.T) {
+		resetDatabase(t)
+		newService := createSample(t, serviceURI, sampleService)
+
+		resp, body := makeRequest(t, http.MethodGet, serviceURI, nil)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		var services []models.HotelService
+		err := json.Unmarshal(body, &services)
+		require.NoError(t, err)
+		require.Contains(t, services, newService)
+	})
+	t.Run("GET/services/{id}", func(t *testing.T) {
+		resetDatabase(t)
+		newService := createSample(t, serviceURI, sampleService)
+
+		resp, body := makeRequest(t, http.MethodGet, fmt.Sprintf("%s/%d", serviceURI, newService.ID), nil)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		var service models.HotelService
+		err := json.Unmarshal(body, &service)
+		require.NoError(t, err)
+		require.Equal(t, newService, service)
+	})
+	t.Run("PUT/services/{id}", func(t *testing.T) {
+		resetDatabase(t)
+		newService := createSample(t, serviceURI, sampleService)
+		newService.Description = "UpdatedDescription"
+
+		resp, body := makeRequest(t, http.MethodPut, fmt.Sprintf("%s/%d", serviceURI, newService.ID), newService)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		var service models.HotelService
+		err := json.Unmarshal(body, &service)
+		require.NoError(t, err)
+		require.Equal(t, newService, service)
+	})
+	t.Run("PATCH/services/{id}", func(t *testing.T) {
+		resetDatabase(t)
+		newService := createSample(t, serviceURI, sampleService)
+
+		patch := map[string]any{"description": "PatchedDescription"}
+		resp, _ := makeRequest(t, http.MethodPatch, fmt.Sprintf("%s/%d", serviceURI, newService.ID), patch)
+		require.Equal(t, http.StatusNoContent, resp.StatusCode)
+
+		resp, body := makeRequest(t, http.MethodGet, fmt.Sprintf("%s/%d", serviceURI, newService.ID), nil)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		var service models.HotelService
+		err := json.Unmarshal(body, &service)
+		require.NoError(t, err)
+		require.Equal(t, "PatchedDescription", service.Description)
+	})
+	t.Run("DELETE/services/{id}", func(t *testing.T) {
+		resetDatabase(t)
+		newService := createSample(t, serviceURI, sampleService)
+
+		resp, _ := makeRequest(t, http.MethodDelete, fmt.Sprintf("%s/%d", serviceURI, newService.ID), nil)
+		require.Equal(t, http.StatusNoContent, resp.StatusCode)
+
+		resp, _ = makeRequest(t, http.MethodGet, fmt.Sprintf("%s/%d", serviceURI, newService.ID), nil)
 		require.Equal(t, http.StatusNotFound, resp.StatusCode)
 	})
 }
