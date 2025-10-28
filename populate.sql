@@ -39,9 +39,9 @@ INSERT INTO review(booking_id, review_comment, rating, review_date) VALUES
 (7, 'Servizio eccellente, ci tornerò sicuramente.', 5, '2025-07-22');
 
 INSERT INTO hotel_service(service_type, description, duration) VALUES
-('cleaning', 'Servizio di pulizia della stanza.', '01:00:00'),
-('room_service', 'Servizio di ordinazione cibo in camera.', '00:30:00'),
-('massage', 'Massaggio rilassante in camera.', '01:30:00');
+('cleaning', 'Servizio di pulizia della stanza.', 90),
+('room_service', 'Servizio di ordinazione cibo in camera.', 30),
+('massage', 'Massaggio rilassante in camera.', 60);
 
 INSERT INTO service_request(customer_id, service_id, service_date) VALUES
 (1, 1, '2025-10-06'),

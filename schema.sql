@@ -1,7 +1,7 @@
 DROP TABLE IF EXISTS customer, room, booking, review, hotel_service, service_request;
 DROP TYPE IF EXISTS room_types, hotel_services;
 
--- Creazione tabelle
+-- Enum Types
 CREATE TYPE room_types AS ENUM ('basic', 'suite');
 CREATE TYPE hotel_services AS ENUM ('cleaning', 'room_service', 'massage');
 
@@ -42,7 +42,7 @@ CREATE TABLE hotel_service(
     id int generated always as identity primary key,
     service_type hotel_services unique,
     description varchar(512),
-    duration time
+    duration int check (duration > 0) -- duration in minutes
 );
 
 CREATE TABLE service_request(
