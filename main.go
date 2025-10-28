@@ -54,6 +54,14 @@ func setupRoutes(mux *http.ServeMux, conn *pgx.Conn, validator *validator.Valida
 	mux.HandleFunc("PUT /rooms/{id}", handlers.UpdateRoomByID(conn, validator))
 	mux.HandleFunc("PATCH /rooms/{id}", handlers.PatchRoomByID(conn, validator))
 	mux.HandleFunc("DELETE /rooms/{id}", handlers.DeleteRoomByID(conn))
+
+	// Hotel Service
+	mux.HandleFunc("GET /services", handlers.GetAllHotelServices(conn))
+	mux.HandleFunc("GET /services/{id}", handlers.GetHotelServiceByID(conn))
+	mux.HandleFunc("POST /services", handlers.CreateHotelService(conn, validator))
+	mux.HandleFunc("PUT /services/{id}", handlers.UpdateHotelServiceByID(conn, validator))
+	mux.HandleFunc("PATCH /services/{id}", handlers.PatchHotelServiceByID(conn, validator))
+	mux.HandleFunc("DELETE /services/{id}", handlers.DeleteHotelServiceByID(conn))
 }
 
 func main() {
