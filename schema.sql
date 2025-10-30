@@ -46,8 +46,9 @@ CREATE TABLE hotel_service(
 );
 
 CREATE TABLE service_request(
+    id int generated always as identity primary key,
     customer_id int references customer(id),
     service_id int references hotel_service(id),
     service_date date,
-    primary key (customer_id, service_id, service_date)
+    unique (customer_id, service_id, service_date)
 );

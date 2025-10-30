@@ -79,10 +79,10 @@ func validateBooking(ctx context.Context, conn *pgx.Conn, booking *models.Bookin
 	if booking.StartDate.After(booking.EndDate) {
 		return models.ValidationError{Message: "start date must be before end date"}
 	}
-	// forse questo non è corretto nel caso si voglia cambiare una prenotazione passata, però per la creazione è necessaria (anche se basterebbe crearla e poi modificarla)
-	// if booking.StartDate.Before(time.Now()) {
-	// 	return models.ValidationError{Message: "start date must be in the future"}
-	// }
+	// cannot create or update bookings in the past
+	if booking.StartDate.Before(time.Now()) {
+		return models.ValidationError{Message: "start date must be in the future"}
+	}
 	startYear, startMonth, startDay := booking.StartDate.Date()
 	endYear, endMonth, endDay := booking.EndDate.Date()
 	if startYear == endYear && startMonth == endMonth && startDay == endDay {
@@ -111,6 +111,9 @@ func validateBooking(ctx context.Context, conn *pgx.Conn, booking *models.Bookin
 	}
 	for _, b := range allBookings {
 		// l'ID diverso è per escludere la stessa prenotazione in caso di update
+		if b.Code == booking.Code && b.ID != booking.ID {
+			return models.ValidationError{Message: "booking code already exists"}
+		}
 		if booking.RoomID == b.RoomID && booking.ID != b.ID {
 			// se la prima data inizia prima della fine del secondo, allora la fine della prima deve essere <= dell'inizio della seconda altrimenti sono sovrapposte
 			if booking.StartDate.Before(b.EndDate) && booking.EndDate.After(b.StartDate) {

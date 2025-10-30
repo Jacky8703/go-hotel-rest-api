@@ -71,6 +71,7 @@ func CreateBooking(dbConnection *pgx.Conn, validator *validator.Validate) http.H
 			http.Error(w, "Invalid date format, use YYYY-MM-DD", http.StatusBadRequest)
 			return
 		}
+		newBooking.ID = -1 // ensure ID is invalid for creation
 		err = services.CreateBooking(r.Context(), dbConnection, &newBooking)
 		if err != nil {
 			if errors.As(err, &models.ValidationError{}) {

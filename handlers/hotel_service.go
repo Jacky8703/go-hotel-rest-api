@@ -61,6 +61,7 @@ func CreateHotelService(dbConnection *pgx.Conn, validator *validator.Validate) h
 			http.Error(w, models.HotelServiceValidationError, http.StatusBadRequest)
 			return
 		}
+		service.ID = -1 // ensure ID is invalid for creation
 		err = services.CreateHotelService(r.Context(), dbConnection, &service)
 		if err != nil {
 			if errors.As(err, &models.ValidationError{}) {
