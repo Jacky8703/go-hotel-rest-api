@@ -23,7 +23,7 @@ func getDBConnStr(host string, dbName string) string {
 func setupRoutes(mux *http.ServeMux, conn *pgx.Conn, validator *validator.Validate) {
 	mux.HandleFunc("GET /", helloWorld)
 
-	// customer
+	// Customers
 	mux.HandleFunc("GET /customers", handlers.GetAllCustomers(conn))
 	mux.HandleFunc("GET /customers/{id}", handlers.GetCustomerByID(conn))
 	mux.HandleFunc("POST /customers", handlers.CreateCustomer(conn, validator))
@@ -31,7 +31,7 @@ func setupRoutes(mux *http.ServeMux, conn *pgx.Conn, validator *validator.Valida
 	mux.HandleFunc("PATCH /customers/{id}", handlers.PatchCustomerByID(conn, validator))
 	mux.HandleFunc("DELETE /customers/{id}", handlers.DeleteCustomerByID(conn))
 
-	// Booking
+	// Bookings
 	mux.HandleFunc("GET /bookings", handlers.GetAllBookings(conn))
 	mux.HandleFunc("GET /bookings/{id}", handlers.GetBookingByID(conn))
 	mux.HandleFunc("POST /bookings", handlers.CreateBooking(conn, validator))
@@ -39,7 +39,7 @@ func setupRoutes(mux *http.ServeMux, conn *pgx.Conn, validator *validator.Valida
 	mux.HandleFunc("PATCH /bookings/{id}", handlers.PatchBookingByID(conn, validator))
 	mux.HandleFunc("DELETE /bookings/{id}", handlers.DeleteBookingByID(conn))
 
-	// Review
+	// Reviews
 	mux.HandleFunc("GET /reviews", handlers.GetAllReviews(conn))
 	mux.HandleFunc("GET /reviews/{id}", handlers.GetReviewByID(conn))
 	mux.HandleFunc("POST /reviews", handlers.CreateReview(conn, validator))
@@ -47,7 +47,7 @@ func setupRoutes(mux *http.ServeMux, conn *pgx.Conn, validator *validator.Valida
 	mux.HandleFunc("PATCH /reviews/{id}", handlers.PatchReviewByID(conn, validator))
 	mux.HandleFunc("DELETE /reviews/{id}", handlers.DeleteReviewByID(conn))
 
-	// Room
+	// Rooms
 	mux.HandleFunc("GET /rooms", handlers.GetAllRooms(conn))
 	mux.HandleFunc("GET /rooms/{id}", handlers.GetRoomByID(conn))
 	mux.HandleFunc("POST /rooms", handlers.CreateRoom(conn, validator))
@@ -55,13 +55,21 @@ func setupRoutes(mux *http.ServeMux, conn *pgx.Conn, validator *validator.Valida
 	mux.HandleFunc("PATCH /rooms/{id}", handlers.PatchRoomByID(conn, validator))
 	mux.HandleFunc("DELETE /rooms/{id}", handlers.DeleteRoomByID(conn))
 
-	// Hotel Service
+	// Services
 	mux.HandleFunc("GET /services", handlers.GetAllHotelServices(conn))
 	mux.HandleFunc("GET /services/{id}", handlers.GetHotelServiceByID(conn))
 	mux.HandleFunc("POST /services", handlers.CreateHotelService(conn, validator))
 	mux.HandleFunc("PUT /services/{id}", handlers.UpdateHotelServiceByID(conn, validator))
 	mux.HandleFunc("PATCH /services/{id}", handlers.PatchHotelServiceByID(conn, validator))
 	mux.HandleFunc("DELETE /services/{id}", handlers.DeleteHotelServiceByID(conn))
+
+	// Service Requests
+	mux.HandleFunc("GET /service-requests", handlers.GetAllServiceRequests(conn))
+	mux.HandleFunc("GET /service-requests/{id}", handlers.GetServiceRequestByID(conn))
+	mux.HandleFunc("POST /service-requests", handlers.CreateServiceRequest(conn, validator))
+	mux.HandleFunc("PUT /service-requests/{id}", handlers.UpdateServiceRequestByID(conn, validator))
+	mux.HandleFunc("PATCH /service-requests/{id}", handlers.PatchServiceRequestByID(conn, validator))
+	mux.HandleFunc("DELETE /service-requests/{id}", handlers.DeleteServiceRequestByID(conn))
 }
 
 func main() {

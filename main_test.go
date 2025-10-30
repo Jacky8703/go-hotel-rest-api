@@ -29,6 +29,7 @@ var (
 	bookingURI  string
 	reviewURI   string
 	serviceURI  string
+	requestURI  string
 	sampleRoom  = models.Room{
 		Number:   101,
 		Type:     "basic",
@@ -58,6 +59,11 @@ var (
 		Type:        "room_service",
 		Description: "Sample description",
 		Duration:    30,
+	}
+	sampleServiceRequestDTO = models.ServiceRequestDTO{
+		CustomerID: -1,
+		ServiceID:  -1,
+		Date:       time.Now().AddDate(0, 0, 3).Format("2006-01-02"),
 	}
 )
 
@@ -111,6 +117,7 @@ func TestMain(m *testing.M) {
 	bookingURI = baseURI + "/bookings"
 	reviewURI = baseURI + "/reviews"
 	serviceURI = baseURI + "/services"
+	requestURI = baseURI + "/service-requests"
 	defer testServer.Close()
 
 	code := m.Run()
@@ -316,31 +323,29 @@ func TestBookingEndpoints(t *testing.T) {
 		require.Equal(t, booking.Code, newBooking.Code)
 	})
 	// test for validation logic
-	t.Run("POST/bookings - start date > end date", func(t *testing.T) {
+	t.Run("POST/bookings - start date must be before end date", func(t *testing.T) {
 		invalidBooking := setupDependencies(t)
 
 		invalidBooking.StartDate = time.Now().AddDate(0, 1, 0).Format("2006-01-02")
 		resp, body := makeRequest(t, http.MethodPost, bookingURI, invalidBooking)
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode, "Expected validation error, got: %s", string(body))
+		fmt.Print(string(body))
 	})
-	// commented in the business logic
-	// t.Run("POST/bookings - start date < current date", func(t *testing.T) {
-	// 	resetDatabase(t)
-	// 	newCustomer := createSample(t, customerURI, sampleCustomer)
-	// 	sampleBookingDTO.CustomerID = newCustomer.ID
-	// 	newRoom := createSample(t, roomURI, sampleRoom)
-	// 	sampleBookingDTO.RoomID = newRoom.ID
-	// 	invalidBooking := sampleBookingDTO
-	// 	invalidBooking.StartDate = time.Now().AddDate(-1, 0, 0).Format("2006-01-02")
-	// 	resp, body := makeRequest(t, http.MethodPost, bookingURI, invalidBooking)
-	// 	require.Equal(t, http.StatusBadRequest, resp.StatusCode, "Expected validation error, got: %s", string(body))
-	// })
-	t.Run("POST/bookings - start date = end date", func(t *testing.T) {
+	t.Run("POST/bookings - start date must be in the future", func(t *testing.T) {
+		invalidBooking := setupDependencies(t)
+
+		invalidBooking.StartDate = time.Now().AddDate(-1, 0, 0).Format("2006-01-02")
+		resp, body := makeRequest(t, http.MethodPost, bookingURI, invalidBooking)
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode, "Expected validation error, got: %s", string(body))
+		fmt.Print(string(body))
+	})
+	t.Run("POST/bookings - start date and end date cannot be the same", func(t *testing.T) {
 		invalidBooking := setupDependencies(t)
 
 		invalidBooking.StartDate = invalidBooking.EndDate
 		resp, body := makeRequest(t, http.MethodPost, bookingURI, invalidBooking)
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode, "Expected validation error, got: %s", string(body))
+		fmt.Print(string(body))
 	})
 	t.Run("POST/bookings - customer does not exist", func(t *testing.T) {
 		invalidBooking := setupDependencies(t)
@@ -348,6 +353,7 @@ func TestBookingEndpoints(t *testing.T) {
 		invalidBooking.CustomerID = -1
 		resp, body := makeRequest(t, http.MethodPost, bookingURI, invalidBooking)
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode, "Expected validation error, got: %s", string(body))
+		fmt.Print(string(body))
 	})
 	t.Run("POST/bookings - room does not exist", func(t *testing.T) {
 		invalidBooking := setupDependencies(t)
@@ -355,8 +361,21 @@ func TestBookingEndpoints(t *testing.T) {
 		invalidBooking.RoomID = -1
 		resp, body := makeRequest(t, http.MethodPost, bookingURI, invalidBooking)
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode, "Expected validation error, got: %s", string(body))
+		fmt.Print(string(body))
 	})
-	t.Run("POST/bookings - overlapping bookings", func(t *testing.T) {
+	t.Run("POST/bookings - booking code already exists", func(t *testing.T) {
+		invalidBooking := setupDependencies(t)
+		invalidBooking.Code = "UNIQUE123"
+		resp, _ := makeRequest(t, http.MethodPost, bookingURI, invalidBooking)
+		require.Equal(t, http.StatusCreated, resp.StatusCode)
+
+		invalidBooking.StartDate = time.Now().AddDate(0, 1, 0).Format("2006-01-02")
+		invalidBooking.EndDate = time.Now().AddDate(0, 1, 1).Format("2006-01-02")
+		resp, body := makeRequest(t, http.MethodPost, bookingURI, invalidBooking)
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode, "Expected validation error, got: %s", string(body))
+		fmt.Print(string(body))
+	})
+	t.Run("POST/bookings - booking dates overlap with an existing booking for the same room", func(t *testing.T) {
 		invalidBooking := setupDependencies(t)
 		createSample(t, bookingURI, invalidBooking)
 
@@ -365,6 +384,7 @@ func TestBookingEndpoints(t *testing.T) {
 		invalidBooking.StartDate = time.Now().AddDate(0, 0, 3).Format("2006-01-02")
 		resp, body := makeRequest(t, http.MethodPost, bookingURI, invalidBooking)
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode, "Expected validation error, got: %s", string(body))
+		fmt.Print(string(body))
 	})
 	t.Run("GET/bookings", func(t *testing.T) {
 		booking := setupDependencies(t)
@@ -447,10 +467,11 @@ func TestReviewEndpoints(t *testing.T) {
 		resetDatabase(t)
 		invalidReview := sampleReviewDTO
 		invalidReview.BookingID = -1
-		resp, _ := makeRequest(t, http.MethodPost, reviewURI, invalidReview)
-		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		resp, body := makeRequest(t, http.MethodPost, reviewURI, invalidReview)
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode, "Expected validation error, got: %s", string(body))
+		fmt.Print(string(body))
 	})
-	t.Run("POST/reviews - review date < booking start date", func(t *testing.T) {
+	t.Run("POST/reviews - review date must be after booking start date", func(t *testing.T) {
 		resetDatabase(t)
 		booking := sampleBookingDTO
 		newCustomer := createSample(t, customerURI, sampleCustomer)
@@ -466,15 +487,17 @@ func TestReviewEndpoints(t *testing.T) {
 		invalidReview.Date = bdate.AddDate(0, 0, -1).Format("2006-01-02")
 
 		invalidReview.BookingID = newBookingDTO.ID
-		resp, _ := makeRequest(t, http.MethodPost, reviewURI, invalidReview)
-		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		resp, body := makeRequest(t, http.MethodPost, reviewURI, invalidReview)
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode, "Expected validation error, got: %s", string(body))
+		fmt.Print(string(body))
 	})
-	t.Run("POST/reviews - customer already reviewed", func(t *testing.T) {
+	t.Run("POST/reviews - customer has already written a review for this booking", func(t *testing.T) {
 		review := setupDependencies(t)
 		review = createSample(t, reviewURI, review)
 
-		resp, _ := makeRequest(t, http.MethodPost, reviewURI, review)
-		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		resp, body := makeRequest(t, http.MethodPost, reviewURI, review)
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode, "Expected validation error, got: %s", string(body))
+		fmt.Print(string(body))
 	})
 	t.Run("GET/reviews", func(t *testing.T) {
 		review := setupDependencies(t)
@@ -543,6 +566,15 @@ func TestHotelServiceEndpoints(t *testing.T) {
 		newService := createSample(t, serviceURI, sampleService)
 		require.Equal(t, sampleService.Type, newService.Type)
 	})
+	t.Run("POST/services - service type already exists", func(t *testing.T) {
+		resetDatabase(t)
+		newService := createSample(t, serviceURI, sampleService)
+		require.Equal(t, sampleService.Type, newService.Type)
+
+		resp, body := makeRequest(t, http.MethodPost, serviceURI, sampleService)
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode, "Expected validation error, got: %s", string(body))
+		fmt.Print(string(body))
+	})
 	t.Run("GET/services", func(t *testing.T) {
 		resetDatabase(t)
 		newService := createSample(t, serviceURI, sampleService)
@@ -600,6 +632,129 @@ func TestHotelServiceEndpoints(t *testing.T) {
 		require.Equal(t, http.StatusNoContent, resp.StatusCode)
 
 		resp, _ = makeRequest(t, http.MethodGet, fmt.Sprintf("%s/%d", serviceURI, newService.ID), nil)
+		require.Equal(t, http.StatusNotFound, resp.StatusCode)
+	})
+}
+
+func TestServiceRequestEndpoints(t *testing.T) {
+	setupDependencies := func(t *testing.T) models.ServiceRequestDTO {
+		resetDatabase(t)
+		booking := sampleBookingDTO
+		request := sampleServiceRequestDTO
+		booking.CustomerID = createSample(t, customerURI, sampleCustomer).ID
+		booking.RoomID = createSample(t, roomURI, sampleRoom).ID
+		createSample(t, bookingURI, booking)
+		request.CustomerID = booking.CustomerID
+		request.ServiceID = createSample(t, serviceURI, sampleService).ID
+		return request
+	}
+	t.Run("POST/service-requests - success", func(t *testing.T) {
+		request := setupDependencies(t)
+		newRequest := createSample(t, requestURI, request)
+		require.Equal(t, request.Date, newRequest.Date)
+	})
+	// test for validation logic
+	t.Run("POST/service-requests - service request date must be in the future", func(t *testing.T) {
+		request := setupDependencies(t)
+		request.Date = time.Now().AddDate(0, 0, -1).Format("2006-01-02")
+		resp, body := makeRequest(t, http.MethodPost, requestURI, request)
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		fmt.Print(string(body))
+	})
+	t.Run("POST/service-requests - customer does not exist", func(t *testing.T) {
+		request := setupDependencies(t)
+		request.CustomerID = -1
+		resp, body := makeRequest(t, http.MethodPost, requestURI, request)
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		fmt.Print(string(body))
+	})
+	t.Run("POST/service-requests - customer has no bookings", func(t *testing.T) {
+		resetDatabase(t)
+		request := sampleServiceRequestDTO
+		request.CustomerID = createSample(t, customerURI, sampleCustomer).ID
+		request.ServiceID = createSample(t, serviceURI, sampleService).ID
+		resp, body := makeRequest(t, http.MethodPost, requestURI, request)
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		fmt.Print(string(body))
+	})
+	t.Run("POST/service-requests - service request date must be within a booking period", func(t *testing.T) {
+		request := setupDependencies(t)
+		request.Date = time.Now().AddDate(0, 0, 10).Format("2006-01-02")
+		resp, body := makeRequest(t, http.MethodPost, requestURI, request)
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		fmt.Print(string(body))
+	})
+	t.Run("POST/service-requests - service does not exist", func(t *testing.T) {
+		request := setupDependencies(t)
+		request.ServiceID = -1
+		resp, body := makeRequest(t, http.MethodPost, requestURI, request)
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		fmt.Print(string(body))
+	})
+	t.Run("POST/service-requests - duplicate service request", func(t *testing.T) {
+		request := setupDependencies(t)
+		createSample(t, requestURI, request)
+		resp, body := makeRequest(t, http.MethodPost, requestURI, request)
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		fmt.Print(string(body))
+	})
+	t.Run("GET/service-requests", func(t *testing.T) {
+		request := setupDependencies(t)
+		request = createSample(t, requestURI, request)
+
+		resp, body := makeRequest(t, http.MethodGet, requestURI, nil)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		var requests []models.ServiceRequestDTO
+		err := json.Unmarshal(body, &requests)
+		require.NoError(t, err)
+		require.Contains(t, requests, request)
+	})
+	t.Run("GET/service-requests/{id}", func(t *testing.T) {
+		request := setupDependencies(t)
+		request = createSample(t, requestURI, request)
+
+		resp, body := makeRequest(t, http.MethodGet, fmt.Sprintf("%s/%d", requestURI, request.ID), nil)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		var r models.ServiceRequestDTO
+		err := json.Unmarshal(body, &r)
+		require.NoError(t, err)
+		require.Equal(t, request, r)
+	})
+	t.Run("PUT/service-requests/{id}", func(t *testing.T) {
+		request := setupDependencies(t)
+		request = createSample(t, requestURI, request)
+		request.Date = time.Now().AddDate(0, 0, 4).Format("2006-01-02")
+
+		resp, body := makeRequest(t, http.MethodPut, fmt.Sprintf("%s/%d", requestURI, request.ID), request)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		var r models.ServiceRequestDTO
+		err := json.Unmarshal(body, &r)
+		require.NoError(t, err)
+		require.Equal(t, request, r)
+	})
+	t.Run("PATCH/service-requests/{id}", func(t *testing.T) {
+		request := setupDependencies(t)
+		request = createSample(t, requestURI, request)
+
+		patch := map[string]any{"date": time.Now().AddDate(0, 0, 4).Format("2006-01-02")}
+		resp, _ := makeRequest(t, http.MethodPatch, fmt.Sprintf("%s/%d", requestURI, request.ID), patch)
+		require.Equal(t, http.StatusNoContent, resp.StatusCode)
+
+		resp, body := makeRequest(t, http.MethodGet, fmt.Sprintf("%s/%d", requestURI, request.ID), nil)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		var r models.ServiceRequestDTO
+		err := json.Unmarshal(body, &r)
+		require.NoError(t, err)
+		require.Equal(t, time.Now().AddDate(0, 0, 4).Format("2006-01-02"), r.Date)
+	})
+	t.Run("DELETE/service-requests/{id}", func(t *testing.T) {
+		request := setupDependencies(t)
+		request = createSample(t, requestURI, request)
+
+		resp, _ := makeRequest(t, http.MethodDelete, fmt.Sprintf("%s/%d", requestURI, request.ID), nil)
+		require.Equal(t, http.StatusNoContent, resp.StatusCode)
+
+		resp, _ = makeRequest(t, http.MethodGet, fmt.Sprintf("%s/%d", requestURI, request.ID), nil)
 		require.Equal(t, http.StatusNotFound, resp.StatusCode)
 	})
 }
