@@ -111,7 +111,7 @@ func UpdateBookingByID(dbConnection *pgx.Conn, validator *validator.Validate) ht
 			http.Error(w, "Invalid date format, use YYYY-MM-DD", http.StatusBadRequest)
 			return
 		}
-		err = services.UpdateBookingByID(r.Context(), dbConnection, &updatedBooking)
+		status, err := services.UpdateBookingByID(r.Context(), dbConnection, &updatedBooking)
 		if err != nil {
 			if errors.As(err, &models.ValidationError{}) {
 				http.Error(w, "Validation error: "+err.Error(), http.StatusBadRequest)
@@ -125,7 +125,7 @@ func UpdateBookingByID(dbConnection *pgx.Conn, validator *validator.Validate) ht
 			log.Println("Error updating booking:", err.Error())
 			return
 		}
-		w.WriteHeader(http.StatusOK)
+		w.WriteHeader(status)
 		returnJSON(w, updatedBooking.ToDTO())
 	}
 }

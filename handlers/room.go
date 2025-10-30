@@ -90,7 +90,7 @@ func UpdateRoomByID(dbConnection *pgx.Conn, validator *validator.Validate) http.
 			http.Error(w, models.RoomValidationError, http.StatusBadRequest)
 			return
 		}
-		err = services.UpdateRoomByID(r.Context(), dbConnection, &updatedRoom)
+		status, err := services.UpdateRoomByID(r.Context(), dbConnection, &updatedRoom)
 		if err != nil {
 			if err == pgx.ErrNoRows {
 				http.Error(w, "Room not found", http.StatusNotFound)
@@ -100,7 +100,7 @@ func UpdateRoomByID(dbConnection *pgx.Conn, validator *validator.Validate) http.
 			log.Println("Error updating room:", err.Error())
 			return
 		}
-		w.WriteHeader(http.StatusOK)
+		w.WriteHeader(status)
 		returnJSON(w, updatedRoom)
 	}
 }

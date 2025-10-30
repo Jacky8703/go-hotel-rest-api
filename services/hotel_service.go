@@ -5,6 +5,7 @@ import (
 	"example/dal"
 	"example/models"
 	"fmt"
+	"net/http"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -25,12 +26,19 @@ func CreateHotelService(ctx context.Context, conn *pgx.Conn, service *models.Hot
 	return dal.CreateHotelService(ctx, conn, service)
 }
 
-func UpdateHotelServiceByID(ctx context.Context, conn *pgx.Conn, service *models.HotelService) error {
+func UpdateHotelServiceByID(ctx context.Context, conn *pgx.Conn, service *models.HotelService) (int, error) {
 	err := validateHotelService(ctx, conn, service)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	return dal.UpdateHotelServiceByID(ctx, conn, service)
+	_, err = dal.GetHotelServiceByID(ctx, conn, service.ID)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return http.StatusCreated, dal.CreateHotelService(ctx, conn, service)
+		}
+		return 0, err
+	}
+	return http.StatusOK, dal.UpdateHotelServiceByID(ctx, conn, service)
 }
 
 func PatchHotelServiceByID(ctx context.Context, conn *pgx.Conn, serviceID int, patch models.HotelServicePatch) error {

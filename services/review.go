@@ -4,6 +4,7 @@ import (
 	"context"
 	"example/dal"
 	"example/models"
+	"net/http"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -25,12 +26,19 @@ func CreateReview(ctx context.Context, conn *pgx.Conn, review *models.Review) er
 	return dal.CreateReview(ctx, conn, review)
 }
 
-func UpdateReviewByID(ctx context.Context, conn *pgx.Conn, review *models.Review) error {
+func UpdateReviewByID(ctx context.Context, conn *pgx.Conn, review *models.Review) (int, error) {
 	err := validateReview(ctx, conn, review, false)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	return dal.UpdateReviewByID(ctx, conn, review)
+	_, err = dal.GetReviewByID(ctx, conn, review.BookingID)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return http.StatusCreated, dal.CreateReview(ctx, conn, review)
+		}
+		return 0, err
+	}
+	return http.StatusOK, dal.UpdateReviewByID(ctx, conn, review)
 }
 
 func PatchReviewByID(ctx context.Context, conn *pgx.Conn, reviewID int, patch models.ReviewPatch) error {

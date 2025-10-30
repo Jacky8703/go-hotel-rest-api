@@ -110,7 +110,7 @@ func UpdateReviewByID(dbConnection *pgx.Conn, validator *validator.Validate) htt
 			http.Error(w, "Invalid date format, use YYYY-MM-DD", http.StatusBadRequest)
 			return
 		}
-		err = services.UpdateReviewByID(r.Context(), dbConnection, &updatedReview)
+		status, err := services.UpdateReviewByID(r.Context(), dbConnection, &updatedReview)
 		if err != nil {
 			if errors.As(err, &models.ValidationError{}) {
 				http.Error(w, "Validation error: "+err.Error(), http.StatusBadRequest)
@@ -124,7 +124,7 @@ func UpdateReviewByID(dbConnection *pgx.Conn, validator *validator.Validate) htt
 			log.Println("Error updating review:", err.Error())
 			return
 		}
-		w.WriteHeader(http.StatusOK)
+		w.WriteHeader(status)
 		returnJSON(w, updatedReview.ToDTO())
 	}
 }

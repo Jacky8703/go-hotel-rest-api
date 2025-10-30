@@ -4,6 +4,7 @@ import (
 	"context"
 	"example/dal"
 	"example/models"
+	"net/http"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -25,12 +26,19 @@ func CreateBooking(ctx context.Context, conn *pgx.Conn, booking *models.Booking)
 	return dal.CreateBooking(ctx, conn, booking)
 }
 
-func UpdateBookingByID(ctx context.Context, conn *pgx.Conn, booking *models.Booking) error {
+func UpdateBookingByID(ctx context.Context, conn *pgx.Conn, booking *models.Booking) (int, error) {
 	err := validateBooking(ctx, conn, booking)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	return dal.UpdateBookingByID(ctx, conn, booking)
+	_, err = dal.GetBookingByID(ctx, conn, booking.ID)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return http.StatusCreated, dal.CreateBooking(ctx, conn, booking)
+		}
+		return 0, err
+	}
+	return http.StatusOK, dal.UpdateBookingByID(ctx, conn, booking)
 }
 
 func PatchBookingByID(ctx context.Context, conn *pgx.Conn, bookingID int, patch models.BookingPatch) error {

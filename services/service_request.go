@@ -4,6 +4,7 @@ import (
 	"context"
 	"example/dal"
 	"example/models"
+	"net/http"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -25,12 +26,19 @@ func CreateServiceRequest(ctx context.Context, conn *pgx.Conn, request *models.S
 	return dal.CreateServiceRequest(ctx, conn, request)
 }
 
-func UpdateServiceRequestByID(ctx context.Context, conn *pgx.Conn, request *models.ServiceRequest) error {
+func UpdateServiceRequestByID(ctx context.Context, conn *pgx.Conn, request *models.ServiceRequest) (int, error) {
 	err := validateServiceRequest(ctx, conn, request)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	return dal.UpdateServiceRequestByID(ctx, conn, request)
+	_, err = dal.GetServiceRequestByID(ctx, conn, request.ID)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return http.StatusCreated, dal.CreateServiceRequest(ctx, conn, request)
+		}
+		return 0, err
+	}
+	return http.StatusOK, dal.UpdateServiceRequestByID(ctx, conn, request)
 }
 
 func PatchServiceRequestByID(ctx context.Context, conn *pgx.Conn, requestID int, patch models.ServiceRequestPatch) error {

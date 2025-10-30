@@ -111,7 +111,7 @@ func UpdateServiceRequestByID(dbConnection *pgx.Conn, validator *validator.Valid
 			http.Error(w, "Invalid date format, use YYYY-MM-DD", http.StatusBadRequest)
 			return
 		}
-		err = services.UpdateServiceRequestByID(r.Context(), dbConnection, &request)
+		status, err := services.UpdateServiceRequestByID(r.Context(), dbConnection, &request)
 		if err != nil {
 			if errors.As(err, &models.ValidationError{}) {
 				http.Error(w, "Validation error: "+err.Error(), http.StatusBadRequest)
@@ -125,7 +125,7 @@ func UpdateServiceRequestByID(dbConnection *pgx.Conn, validator *validator.Valid
 			log.Println("Error updating service request:", err.Error())
 			return
 		}
-		w.WriteHeader(http.StatusOK)
+		w.WriteHeader(status)
 		returnJSON(w, request.ToDTO())
 	}
 }

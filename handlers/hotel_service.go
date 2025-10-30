@@ -96,7 +96,7 @@ func UpdateHotelServiceByID(dbConnection *pgx.Conn, validator *validator.Validat
 			http.Error(w, models.HotelServiceValidationError, http.StatusBadRequest)
 			return
 		}
-		err = services.UpdateHotelServiceByID(r.Context(), dbConnection, &service)
+		status, err := services.UpdateHotelServiceByID(r.Context(), dbConnection, &service)
 		if err != nil {
 			if errors.As(err, &models.ValidationError{}) {
 				http.Error(w, "Validation error: "+err.Error(), http.StatusBadRequest)
@@ -110,7 +110,7 @@ func UpdateHotelServiceByID(dbConnection *pgx.Conn, validator *validator.Validat
 			log.Println("Error updating hotel service:", err.Error())
 			return
 		}
-		w.WriteHeader(http.StatusOK)
+		w.WriteHeader(status)
 		returnJSON(w, service)
 	}
 }

@@ -90,7 +90,7 @@ func UpdateCustomerByID(dbConnection *pgx.Conn, validator *validator.Validate) h
 			http.Error(w, models.CustomerValidationError, http.StatusBadRequest)
 			return
 		}
-		err = services.UpdateCustomerByID(r.Context(), dbConnection, &updatedCustomer)
+		status, err := services.UpdateCustomerByID(r.Context(), dbConnection, &updatedCustomer)
 		if err != nil {
 			if err == pgx.ErrNoRows {
 				http.Error(w, "customer not found", http.StatusNotFound)
@@ -100,7 +100,7 @@ func UpdateCustomerByID(dbConnection *pgx.Conn, validator *validator.Validate) h
 			log.Println("Error updating customer:", err.Error())
 			return
 		}
-		w.WriteHeader(http.StatusOK)
+		w.WriteHeader(status)
 		returnJSON(w, updatedCustomer)
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"example/dal"
 	"example/models"
+	"net/http"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -20,8 +21,15 @@ func CreateRoom(ctx context.Context, conn *pgx.Conn, room *models.Room) error {
 	return dal.CreateRoom(ctx, conn, room)
 }
 
-func UpdateRoomByID(ctx context.Context, conn *pgx.Conn, room *models.Room) error {
-	return dal.UpdateRoomByID(ctx, conn, room)
+func UpdateRoomByID(ctx context.Context, conn *pgx.Conn, room *models.Room) (int, error) {
+	_, err := dal.GetRoomByID(ctx, conn, room.ID)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return http.StatusCreated, dal.CreateRoom(ctx, conn, room)
+		}
+		return 0, err
+	}
+	return http.StatusOK, dal.UpdateRoomByID(ctx, conn, room)
 }
 
 func PatchRoomByID(ctx context.Context, conn *pgx.Conn, roomID int, patch models.RoomPatch) error {

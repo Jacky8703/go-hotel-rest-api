@@ -4,6 +4,7 @@ import (
 	"context"
 	"example/dal"
 	"example/models"
+	"net/http"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -20,8 +21,15 @@ func CreateCustomer(ctx context.Context, conn *pgx.Conn, customer *models.Custom
 	return dal.CreateCustomer(ctx, conn, customer)
 }
 
-func UpdateCustomerByID(ctx context.Context, conn *pgx.Conn, customer *models.Customer) error {
-	return dal.UpdateCustomerByID(ctx, conn, customer)
+func UpdateCustomerByID(ctx context.Context, conn *pgx.Conn, customer *models.Customer) (int, error) {
+	_, err := dal.GetCustomerByID(ctx, conn, customer.ID)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return http.StatusCreated, dal.CreateCustomer(ctx, conn, customer)
+		}
+		return 0, err
+	}
+	return http.StatusOK, dal.UpdateCustomerByID(ctx, conn, customer)
 }
 
 func PatchCustomerByID(ctx context.Context, conn *pgx.Conn, customerID int, patch models.CustomerPatch) error {

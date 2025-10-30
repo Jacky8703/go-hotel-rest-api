@@ -202,7 +202,7 @@ func TestCustomerEndpoints(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, newCustomer, customer)
 	})
-	t.Run("PUT/customers/{id}", func(t *testing.T) {
+	t.Run("PUT/customers/{id} - update", func(t *testing.T) {
 		resetDatabase(t)
 		newCustomer := createSample(t, customerURI, sampleCustomer)
 		newCustomer.Name = "UpdatedName"
@@ -213,6 +213,11 @@ func TestCustomerEndpoints(t *testing.T) {
 		err := json.Unmarshal(body, &customer)
 		require.NoError(t, err)
 		require.Equal(t, newCustomer, customer)
+	})
+	t.Run("PUT/customers/{id} - create", func(t *testing.T) {
+		resetDatabase(t)
+		resp, _ := makeRequest(t, http.MethodPut, fmt.Sprintf("%s/%d", customerURI, sampleCustomer.ID), sampleCustomer)
+		require.Equal(t, http.StatusCreated, resp.StatusCode)
 	})
 	t.Run("PATCH/customers/{id}", func(t *testing.T) {
 		resetDatabase(t)
@@ -269,7 +274,7 @@ func TestRoomEndpoints(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, newRoom, room)
 	})
-	t.Run("PUT/rooms/{id}", func(t *testing.T) {
+	t.Run("PUT/rooms/{id} - update", func(t *testing.T) {
 		resetDatabase(t)
 		newRoom := createSample(t, roomURI, sampleRoom)
 		newRoom.Price += 10
@@ -280,6 +285,11 @@ func TestRoomEndpoints(t *testing.T) {
 		err := json.Unmarshal(body, &room)
 		require.NoError(t, err)
 		require.Equal(t, newRoom, room)
+	})
+	t.Run("PUT/rooms/{id} - create", func(t *testing.T) {
+		resetDatabase(t)
+		resp, _ := makeRequest(t, http.MethodPut, fmt.Sprintf("%s/%d", roomURI, sampleRoom.ID), sampleRoom)
+		require.Equal(t, http.StatusCreated, resp.StatusCode)
 	})
 	t.Run("PATCH/rooms/{id}", func(t *testing.T) {
 		resetDatabase(t)
@@ -408,7 +418,7 @@ func TestBookingEndpoints(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, booking, b)
 	})
-	t.Run("PUT/bookings/{id}", func(t *testing.T) {
+	t.Run("PUT/bookings/{id} - update", func(t *testing.T) {
 		booking := setupDependencies(t)
 		booking = createSample(t, bookingURI, booking)
 		booking.StartDate = time.Now().AddDate(0, 0, 3).Format("2006-01-02") // this also tests the overlapping logic on update
@@ -419,6 +429,11 @@ func TestBookingEndpoints(t *testing.T) {
 		err := json.Unmarshal(body, &b)
 		require.NoError(t, err)
 		require.Equal(t, booking, b)
+	})
+	t.Run("PUT/bookings/{id} - create", func(t *testing.T) {
+		booking := setupDependencies(t)
+		resp, _ := makeRequest(t, http.MethodPut, fmt.Sprintf("%s/%d", bookingURI, booking.ID), booking)
+		require.Equal(t, http.StatusCreated, resp.StatusCode)
 	})
 	t.Run("PATCH/bookings/{id}", func(t *testing.T) {
 		booking := setupDependencies(t)
@@ -521,7 +536,7 @@ func TestReviewEndpoints(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, review, r)
 	})
-	t.Run("PUT/reviews/{id}", func(t *testing.T) {
+	t.Run("PUT/reviews/{id} - update", func(t *testing.T) {
 		review := setupDependencies(t)
 		review = createSample(t, reviewURI, review)
 		review.Comment = "UpdatedComment"
@@ -532,6 +547,11 @@ func TestReviewEndpoints(t *testing.T) {
 		err := json.Unmarshal(body, &r)
 		require.NoError(t, err)
 		require.Equal(t, review, r)
+	})
+	t.Run("PUT/reviews/{id} - create", func(t *testing.T) {
+		review := setupDependencies(t)
+		resp, _ := makeRequest(t, http.MethodPut, fmt.Sprintf("%s/%d", reviewURI, review.BookingID), review)
+		require.Equal(t, http.StatusCreated, resp.StatusCode)
 	})
 	t.Run("PATCH/reviews/{id}", func(t *testing.T) {
 		review := setupDependencies(t)
@@ -597,7 +617,7 @@ func TestHotelServiceEndpoints(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, newService, service)
 	})
-	t.Run("PUT/services/{id}", func(t *testing.T) {
+	t.Run("PUT/services/{id} - update", func(t *testing.T) {
 		resetDatabase(t)
 		newService := createSample(t, serviceURI, sampleService)
 		newService.Description = "UpdatedDescription"
@@ -608,6 +628,11 @@ func TestHotelServiceEndpoints(t *testing.T) {
 		err := json.Unmarshal(body, &service)
 		require.NoError(t, err)
 		require.Equal(t, newService, service)
+	})
+	t.Run("PUT/services/{id} - create", func(t *testing.T) {
+		resetDatabase(t)
+		resp, _ := makeRequest(t, http.MethodPut, fmt.Sprintf("%s/%d", serviceURI, sampleService.ID), sampleService)
+		require.Equal(t, http.StatusCreated, resp.StatusCode)
 	})
 	t.Run("PATCH/services/{id}", func(t *testing.T) {
 		resetDatabase(t)
@@ -720,7 +745,7 @@ func TestServiceRequestEndpoints(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, request, r)
 	})
-	t.Run("PUT/service-requests/{id}", func(t *testing.T) {
+	t.Run("PUT/service-requests/{id} - update", func(t *testing.T) {
 		request := setupDependencies(t)
 		request = createSample(t, requestURI, request)
 		request.Date = time.Now().AddDate(0, 0, 4).Format("2006-01-02")
@@ -731,6 +756,11 @@ func TestServiceRequestEndpoints(t *testing.T) {
 		err := json.Unmarshal(body, &r)
 		require.NoError(t, err)
 		require.Equal(t, request, r)
+	})
+	t.Run("PUT/service-requests/{id} - create", func(t *testing.T) {
+		request := setupDependencies(t)
+		resp, _ := makeRequest(t, http.MethodPut, fmt.Sprintf("%s/%d", requestURI, request.ID), request)
+		require.Equal(t, http.StatusCreated, resp.StatusCode)
 	})
 	t.Run("PATCH/service-requests/{id}", func(t *testing.T) {
 		request := setupDependencies(t)
