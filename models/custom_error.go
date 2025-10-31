@@ -1,6 +1,6 @@
 package models
 
-// custom error type for validation errors in services
+// ValidationError custom error type for validation errors in services
 type ValidationError struct {
 	Message string
 }

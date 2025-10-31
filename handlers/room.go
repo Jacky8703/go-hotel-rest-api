@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"example/models"
 	"example/services"
 	"log"
@@ -34,7 +35,7 @@ func GetRoomByID(dbConnection *pgx.Conn) http.HandlerFunc {
 		}
 		room, err := services.GetRoomByID(r.Context(), dbConnection, roomID)
 		if err != nil {
-			if err == pgx.ErrNoRows {
+			if errors.Is(err, pgx.ErrNoRows) {
 				http.Error(w, "Room not found", http.StatusNotFound)
 				return
 			}
@@ -92,7 +93,7 @@ func UpdateRoomByID(dbConnection *pgx.Conn, validator *validator.Validate) http.
 		}
 		status, err := services.UpdateRoomByID(r.Context(), dbConnection, &updatedRoom)
 		if err != nil {
-			if err == pgx.ErrNoRows {
+			if errors.Is(err, pgx.ErrNoRows) {
 				http.Error(w, "Room not found", http.StatusNotFound)
 				return
 			}
@@ -125,7 +126,7 @@ func PatchRoomByID(dbConnection *pgx.Conn, validator *validator.Validate) http.H
 		}
 		err = services.PatchRoomByID(r.Context(), dbConnection, roomID, patch)
 		if err != nil {
-			if err == pgx.ErrNoRows {
+			if errors.Is(err, pgx.ErrNoRows) {
 				http.Error(w, "Room not found", http.StatusNotFound)
 				return
 			}
@@ -146,7 +147,7 @@ func DeleteRoomByID(dbConnection *pgx.Conn) http.HandlerFunc {
 		}
 		err = services.DeleteRoomByID(r.Context(), dbConnection, roomID)
 		if err != nil {
-			if err == pgx.ErrNoRows {
+			if errors.Is(err, pgx.ErrNoRows) {
 				http.Error(w, "Room not found", http.StatusNotFound)
 				return
 			}

@@ -40,7 +40,7 @@ func GetBookingByID(dbConnection *pgx.Conn) http.HandlerFunc {
 		}
 		booking, err := services.GetBookingByID(r.Context(), dbConnection, bookingID)
 		if err != nil {
-			if err == pgx.ErrNoRows {
+			if errors.Is(err, pgx.ErrNoRows) {
 				http.Error(w, "Booking not found", http.StatusNotFound)
 				return
 			}
@@ -117,7 +117,7 @@ func UpdateBookingByID(dbConnection *pgx.Conn, validator *validator.Validate) ht
 				http.Error(w, "Validation error: "+err.Error(), http.StatusBadRequest)
 				return
 			}
-			if err == pgx.ErrNoRows {
+			if errors.Is(err, pgx.ErrNoRows) {
 				http.Error(w, "Booking not found", http.StatusNotFound)
 				return
 			}
@@ -154,7 +154,7 @@ func PatchBookingByID(dbConnection *pgx.Conn, validator *validator.Validate) htt
 				http.Error(w, "Validation error: "+err.Error(), http.StatusBadRequest)
 				return
 			}
-			if err == pgx.ErrNoRows {
+			if errors.Is(err, pgx.ErrNoRows) {
 				http.Error(w, "Booking not found", http.StatusNotFound)
 				return
 			}
@@ -175,7 +175,7 @@ func DeleteBookingByID(dbConnection *pgx.Conn) http.HandlerFunc {
 		}
 		err = services.DeleteBookingByID(r.Context(), dbConnection, bookingID)
 		if err != nil {
-			if err == pgx.ErrNoRows {
+			if errors.Is(err, pgx.ErrNoRows) {
 				http.Error(w, "Booking not found", http.StatusNotFound)
 				return
 			}

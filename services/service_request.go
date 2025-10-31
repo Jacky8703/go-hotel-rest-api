@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"example/dal"
 	"example/models"
 	"net/http"
@@ -33,7 +34,7 @@ func UpdateServiceRequestByID(ctx context.Context, conn *pgx.Conn, request *mode
 	}
 	_, err = dal.GetServiceRequestByID(ctx, conn, request.ID)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return http.StatusCreated, dal.CreateServiceRequest(ctx, conn, request)
 		}
 		return 0, err
@@ -80,7 +81,7 @@ func validateServiceRequest(ctx context.Context, conn *pgx.Conn, request *models
 	}
 	customer, err := dal.GetCustomerByID(ctx, conn, request.CustomerID)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return models.ValidationError{Message: "customer does not exist"}
 		}
 		return err
@@ -101,7 +102,7 @@ func validateServiceRequest(ctx context.Context, conn *pgx.Conn, request *models
 	}
 	_, err = dal.GetHotelServiceByID(ctx, conn, request.ServiceID)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return models.ValidationError{Message: "service does not exist"}
 		}
 		return err

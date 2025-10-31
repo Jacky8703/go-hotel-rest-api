@@ -50,16 +50,22 @@ func UpdateHotelServiceByID(ctx context.Context, conn *pgx.Conn, service *models
 func PatchHotelServiceByID(ctx context.Context, conn *pgx.Conn, serviceID int, patch models.HotelServicePatch) error {
 	query, args := createPatchQuery("hotel_service", patch, "id", serviceID)
 	tag, err := conn.Exec(ctx, query, args...)
+	if err != nil {
+		return err
+	}
 	if tag.RowsAffected() == 0 {
 		return pgx.ErrNoRows
 	}
-	return err
+	return nil
 }
 
 func DeleteHotelServiceByID(ctx context.Context, conn *pgx.Conn, serviceID int) error {
 	tag, err := conn.Exec(ctx, "DELETE FROM hotel_service WHERE id = $1", serviceID)
+	if err != nil {
+		return err
+	}
 	if tag.RowsAffected() == 0 {
 		return pgx.ErrNoRows
 	}
-	return err
+	return nil
 }

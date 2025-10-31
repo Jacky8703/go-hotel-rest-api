@@ -50,16 +50,22 @@ func UpdateCustomerByID(ctx context.Context, conn *pgx.Conn, customer *models.Cu
 func PatchCustomerByID(ctx context.Context, conn *pgx.Conn, customerID int, patch models.CustomerPatch) error {
 	query, args := createPatchQuery("customer", patch, "id", customerID)
 	tag, err := conn.Exec(ctx, query, args...)
+	if err != nil {
+		return err
+	}
 	if tag.RowsAffected() == 0 {
 		return pgx.ErrNoRows
 	}
-	return err
+	return nil
 }
 
 func DeleteCustomerByID(ctx context.Context, conn *pgx.Conn, customerID int) error {
 	tag, err := conn.Exec(ctx, "DELETE FROM customer WHERE id = $1", customerID)
+	if err != nil {
+		return err
+	}
 	if tag.RowsAffected() == 0 {
 		return pgx.ErrNoRows
 	}
-	return err
+	return nil
 }

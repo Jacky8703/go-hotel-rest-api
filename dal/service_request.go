@@ -50,16 +50,22 @@ func UpdateServiceRequestByID(ctx context.Context, conn *pgx.Conn, request *mode
 func PatchServiceRequestByID(ctx context.Context, conn *pgx.Conn, requestID int, patch models.ServiceRequestPatch) error {
 	query, args := createPatchQuery("service_request", patch, "id", requestID)
 	tag, err := conn.Exec(ctx, query, args...)
+	if err != nil {
+		return err
+	}
 	if tag.RowsAffected() == 0 {
 		return pgx.ErrNoRows
 	}
-	return err
+	return nil
 }
 
 func DeleteServiceRequestByID(ctx context.Context, conn *pgx.Conn, requestID int) error {
 	tag, err := conn.Exec(ctx, "DELETE FROM service_request WHERE id = $1", requestID)
+	if err != nil {
+		return err
+	}
 	if tag.RowsAffected() == 0 {
 		return pgx.ErrNoRows
 	}
-	return err
+	return nil
 }

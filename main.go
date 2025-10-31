@@ -80,15 +80,18 @@ func main() {
 	}
 	defer conn.Close(ctx)
 
-	validator := validator.New()
+	val := validator.New()
 	mux := http.NewServeMux()
-	setupRoutes(mux, conn, validator)
+	setupRoutes(mux, conn, val)
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 	fmt.Printf("Server listening on http://0.0.0.0:%s\n", port)
-	http.ListenAndServe("0.0.0.0:"+port, mux)
+	err = http.ListenAndServe("0.0.0.0:"+port, mux)
+	if err != nil {
+		log.Fatal("Server failed to start:", err)
+	}
 }
 
 func helloWorld(w http.ResponseWriter, r *http.Request) {

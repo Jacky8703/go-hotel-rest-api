@@ -50,16 +50,22 @@ func UpdateReviewByID(ctx context.Context, conn *pgx.Conn, review *models.Review
 func PatchReviewByID(ctx context.Context, conn *pgx.Conn, reviewID int, patch models.ReviewPatch) error {
 	query, args := createPatchQuery("review", patch, "booking_id", reviewID)
 	tag, err := conn.Exec(ctx, query, args...)
+	if err != nil {
+		return err
+	}
 	if tag.RowsAffected() == 0 {
 		return pgx.ErrNoRows
 	}
-	return err
+	return nil
 }
 
 func DeleteReviewByID(ctx context.Context, conn *pgx.Conn, reviewID int) error {
 	tag, err := conn.Exec(ctx, "DELETE FROM review WHERE booking_id = $1", reviewID)
+	if err != nil {
+		return err
+	}
 	if tag.RowsAffected() == 0 {
 		return pgx.ErrNoRows
 	}
-	return err
+	return nil
 }

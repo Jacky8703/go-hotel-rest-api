@@ -40,7 +40,7 @@ func GetServiceRequestByID(dbConnection *pgx.Conn) http.HandlerFunc {
 		}
 		request, err := services.GetServiceRequestByID(r.Context(), dbConnection, requestID)
 		if err != nil {
-			if err == pgx.ErrNoRows {
+			if errors.Is(err, pgx.ErrNoRows) {
 				http.Error(w, "Service request not found", http.StatusNotFound)
 				return
 			}
@@ -117,7 +117,7 @@ func UpdateServiceRequestByID(dbConnection *pgx.Conn, validator *validator.Valid
 				http.Error(w, "Validation error: "+err.Error(), http.StatusBadRequest)
 				return
 			}
-			if err == pgx.ErrNoRows {
+			if errors.Is(err, pgx.ErrNoRows) {
 				http.Error(w, "Service request not found", http.StatusNotFound)
 				return
 			}
@@ -154,7 +154,7 @@ func PatchServiceRequestByID(dbConnection *pgx.Conn, validator *validator.Valida
 				http.Error(w, "Validation error: "+err.Error(), http.StatusBadRequest)
 				return
 			}
-			if err == pgx.ErrNoRows {
+			if errors.Is(err, pgx.ErrNoRows) {
 				http.Error(w, "Service request not found", http.StatusNotFound)
 				return
 			}
@@ -175,7 +175,7 @@ func DeleteServiceRequestByID(dbConnection *pgx.Conn) http.HandlerFunc {
 		}
 		err = services.DeleteServiceRequestByID(r.Context(), dbConnection, requestID)
 		if err != nil {
-			if err == pgx.ErrNoRows {
+			if errors.Is(err, pgx.ErrNoRows) {
 				http.Error(w, "Service request not found", http.StatusNotFound)
 				return
 			}

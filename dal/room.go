@@ -50,16 +50,22 @@ func UpdateRoomByID(ctx context.Context, conn *pgx.Conn, room *models.Room) erro
 func PatchRoomByID(ctx context.Context, conn *pgx.Conn, roomID int, patch models.RoomPatch) error {
 	query, args := createPatchQuery("room", patch, "id", roomID)
 	tag, err := conn.Exec(ctx, query, args...)
+	if err != nil {
+		return err
+	}
 	if tag.RowsAffected() == 0 {
 		return pgx.ErrNoRows
 	}
-	return err
+	return nil
 }
 
 func DeleteRoomByID(ctx context.Context, conn *pgx.Conn, roomID int) error {
 	tag, err := conn.Exec(ctx, "DELETE FROM room WHERE id = $1", roomID)
+	if err != nil {
+		return err
+	}
 	if tag.RowsAffected() == 0 {
 		return pgx.ErrNoRows
 	}
-	return err
+	return nil
 }

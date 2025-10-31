@@ -40,7 +40,7 @@ func GetReviewByID(dbConnection *pgx.Conn) http.HandlerFunc {
 		}
 		review, err := services.GetReviewByID(r.Context(), dbConnection, reviewID)
 		if err != nil {
-			if err == pgx.ErrNoRows {
+			if errors.Is(err, pgx.ErrNoRows) {
 				http.Error(w, "Review not found", http.StatusNotFound)
 				return
 			}
@@ -116,7 +116,7 @@ func UpdateReviewByID(dbConnection *pgx.Conn, validator *validator.Validate) htt
 				http.Error(w, "Validation error: "+err.Error(), http.StatusBadRequest)
 				return
 			}
-			if err == pgx.ErrNoRows {
+			if errors.Is(err, pgx.ErrNoRows) {
 				http.Error(w, "Review not found", http.StatusNotFound)
 				return
 			}
@@ -153,7 +153,7 @@ func PatchReviewByID(dbConnection *pgx.Conn, validator *validator.Validate) http
 				http.Error(w, "Validation error: "+err.Error(), http.StatusBadRequest)
 				return
 			}
-			if err == pgx.ErrNoRows {
+			if errors.Is(err, pgx.ErrNoRows) {
 				http.Error(w, "Review not found", http.StatusNotFound)
 				return
 			}
@@ -174,7 +174,7 @@ func DeleteReviewByID(dbConnection *pgx.Conn) http.HandlerFunc {
 		}
 		err = services.DeleteReviewByID(r.Context(), dbConnection, reviewID)
 		if err != nil {
-			if err == pgx.ErrNoRows {
+			if errors.Is(err, pgx.ErrNoRows) {
 				http.Error(w, "Review not found", http.StatusNotFound)
 				return
 			}

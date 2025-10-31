@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"example/dal"
 	"example/models"
 	"net/http"
@@ -33,7 +34,7 @@ func UpdateBookingByID(ctx context.Context, conn *pgx.Conn, booking *models.Book
 	}
 	_, err = dal.GetBookingByID(ctx, conn, booking.ID)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return http.StatusCreated, dal.CreateBooking(ctx, conn, booking)
 		}
 		return 0, err
@@ -99,14 +100,14 @@ func validateBooking(ctx context.Context, conn *pgx.Conn, booking *models.Bookin
 
 	_, err := dal.GetCustomerByID(ctx, conn, booking.CustomerID)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return models.ValidationError{Message: "customer does not exist"}
 		}
 		return err
 	}
 	_, err = dal.GetRoomByID(ctx, conn, booking.RoomID)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return models.ValidationError{Message: "room does not exist"}
 		}
 		return err
@@ -118,12 +119,12 @@ func validateBooking(ctx context.Context, conn *pgx.Conn, booking *models.Bookin
 		return err
 	}
 	for _, b := range allBookings {
-		// l'ID diverso è per escludere la stessa prenotazione in caso di update
+		// different ID for update case
 		if b.Code == booking.Code && b.ID != booking.ID {
 			return models.ValidationError{Message: "booking code already exists"}
 		}
 		if booking.RoomID == b.RoomID && booking.ID != b.ID {
-			// se la prima data inizia prima della fine del secondo, allora la fine della prima deve essere <= dell'inizio della seconda altrimenti sono sovrapposte
+			// check for date overlap
 			if booking.StartDate.Before(b.EndDate) && booking.EndDate.After(b.StartDate) {
 				return models.ValidationError{Message: "booking dates overlap with an existing booking for the same room"}
 			}

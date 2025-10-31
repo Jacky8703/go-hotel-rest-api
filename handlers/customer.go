@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"example/models"
 	"example/services"
 	"log"
@@ -34,7 +35,7 @@ func GetCustomerByID(dbConnection *pgx.Conn) http.HandlerFunc {
 		}
 		customer, err := services.GetCustomerByID(r.Context(), dbConnection, customerID)
 		if err != nil {
-			if err == pgx.ErrNoRows {
+			if errors.Is(err, pgx.ErrNoRows) {
 				http.Error(w, "customer not found", http.StatusNotFound)
 				return
 			}
@@ -92,7 +93,7 @@ func UpdateCustomerByID(dbConnection *pgx.Conn, validator *validator.Validate) h
 		}
 		status, err := services.UpdateCustomerByID(r.Context(), dbConnection, &updatedCustomer)
 		if err != nil {
-			if err == pgx.ErrNoRows {
+			if errors.Is(err, pgx.ErrNoRows) {
 				http.Error(w, "customer not found", http.StatusNotFound)
 				return
 			}
@@ -125,7 +126,7 @@ func PatchCustomerByID(dbConnection *pgx.Conn, validator *validator.Validate) ht
 		}
 		err = services.PatchCustomerByID(r.Context(), dbConnection, customerID, patch)
 		if err != nil {
-			if err == pgx.ErrNoRows {
+			if errors.Is(err, pgx.ErrNoRows) {
 				http.Error(w, "customer not found", http.StatusNotFound)
 				return
 			}
@@ -146,7 +147,7 @@ func DeleteCustomerByID(dbConnection *pgx.Conn) http.HandlerFunc {
 		}
 		err = services.DeleteCustomerByID(r.Context(), dbConnection, customerID)
 		if err != nil {
-			if err == pgx.ErrNoRows {
+			if errors.Is(err, pgx.ErrNoRows) {
 				http.Error(w, "customer not found", http.StatusNotFound)
 				return
 			}
@@ -166,5 +167,8 @@ func returnJSON(w http.ResponseWriter, payload any) {
 		log.Println("Error marshaling payload:", err.Error())
 		return
 	}
-	w.Write(bytes)
+	_, err = w.Write(bytes)
+	if err != nil {
+		log.Println("Error writing response:", err.Error())
+	}
 }

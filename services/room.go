@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"example/dal"
 	"example/models"
 	"net/http"
@@ -24,7 +25,7 @@ func CreateRoom(ctx context.Context, conn *pgx.Conn, room *models.Room) error {
 func UpdateRoomByID(ctx context.Context, conn *pgx.Conn, room *models.Room) (int, error) {
 	_, err := dal.GetRoomByID(ctx, conn, room.ID)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return http.StatusCreated, dal.CreateRoom(ctx, conn, room)
 		}
 		return 0, err

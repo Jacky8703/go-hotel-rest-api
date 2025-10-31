@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"example/dal"
 	"example/models"
 	"fmt"
@@ -33,7 +34,7 @@ func UpdateHotelServiceByID(ctx context.Context, conn *pgx.Conn, service *models
 	}
 	_, err = dal.GetHotelServiceByID(ctx, conn, service.ID)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return http.StatusCreated, dal.CreateHotelService(ctx, conn, service)
 		}
 		return 0, err

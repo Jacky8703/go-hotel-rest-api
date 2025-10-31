@@ -15,14 +15,14 @@ import (
 
 func GetAllHotelServices(dbConnection *pgx.Conn) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		services, err := services.GetAllHotelServices(r.Context(), dbConnection)
+		hotelServices, err := services.GetAllHotelServices(r.Context(), dbConnection)
 		if err != nil {
 			http.Error(w, "Unable to get all hotel services", http.StatusServiceUnavailable)
 			log.Println("Error getting hotel services:", err.Error())
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		returnJSON(w, services)
+		returnJSON(w, hotelServices)
 	}
 }
 
@@ -35,7 +35,7 @@ func GetHotelServiceByID(dbConnection *pgx.Conn) http.HandlerFunc {
 		}
 		service, err := services.GetHotelServiceByID(r.Context(), dbConnection, serviceID)
 		if err != nil {
-			if err == pgx.ErrNoRows {
+			if errors.Is(err, pgx.ErrNoRows) {
 				http.Error(w, "Hotel service not found", http.StatusNotFound)
 				return
 			}
@@ -102,7 +102,7 @@ func UpdateHotelServiceByID(dbConnection *pgx.Conn, validator *validator.Validat
 				http.Error(w, "Validation error: "+err.Error(), http.StatusBadRequest)
 				return
 			}
-			if err == pgx.ErrNoRows {
+			if errors.Is(err, pgx.ErrNoRows) {
 				http.Error(w, "Hotel service not found", http.StatusNotFound)
 				return
 			}
@@ -139,7 +139,7 @@ func PatchHotelServiceByID(dbConnection *pgx.Conn, validator *validator.Validate
 				http.Error(w, "Validation error: "+err.Error(), http.StatusBadRequest)
 				return
 			}
-			if err == pgx.ErrNoRows {
+			if errors.Is(err, pgx.ErrNoRows) {
 				http.Error(w, "Hotel service not found", http.StatusNotFound)
 				return
 			}
@@ -160,7 +160,7 @@ func DeleteHotelServiceByID(dbConnection *pgx.Conn) http.HandlerFunc {
 		}
 		err = services.DeleteHotelServiceByID(r.Context(), dbConnection, serviceID)
 		if err != nil {
-			if err == pgx.ErrNoRows {
+			if errors.Is(err, pgx.ErrNoRows) {
 				http.Error(w, "Hotel service not found", http.StatusNotFound)
 				return
 			}

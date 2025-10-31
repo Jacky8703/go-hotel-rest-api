@@ -53,18 +53,24 @@ func UpdateBookingByID(ctx context.Context, conn *pgx.Conn, booking *models.Book
 func PatchBookingByID(ctx context.Context, conn *pgx.Conn, bookingID int, patch models.BookingPatch) error {
 	query, args := createPatchQuery("booking", patch, "id", bookingID)
 	tag, err := conn.Exec(ctx, query, args...)
+	if err != nil {
+		return err
+	}
 	if tag.RowsAffected() == 0 {
 		return pgx.ErrNoRows
 	}
-	return err
+	return nil
 }
 
 func DeleteBookingByID(ctx context.Context, conn *pgx.Conn, bookingID int) error {
 	tag, err := conn.Exec(ctx, "DELETE FROM booking WHERE id = $1", bookingID)
+	if err != nil {
+		return err
+	}
 	if tag.RowsAffected() == 0 {
 		return pgx.ErrNoRows
 	}
-	return err
+	return nil
 }
 
 func createPatchQuery(table string, patch models.Patch, idName string, id int) (string, []any) {

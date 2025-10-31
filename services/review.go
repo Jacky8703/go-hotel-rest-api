@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"example/dal"
 	"example/models"
 	"net/http"
@@ -33,7 +34,7 @@ func UpdateReviewByID(ctx context.Context, conn *pgx.Conn, review *models.Review
 	}
 	_, err = dal.GetReviewByID(ctx, conn, review.BookingID)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return http.StatusCreated, dal.CreateReview(ctx, conn, review)
 		}
 		return 0, err
@@ -80,7 +81,7 @@ func DeleteReviewByID(ctx context.Context, conn *pgx.Conn, reviewID int) error {
 func validateReview(ctx context.Context, conn *pgx.Conn, review *models.Review, new bool) error {
 	booking, err := dal.GetBookingByID(ctx, conn, review.BookingID)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return models.ValidationError{Message: "booking does not exist"}
 		}
 		return err

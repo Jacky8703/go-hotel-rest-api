@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"example/dal"
 	"example/models"
 	"net/http"
@@ -24,7 +25,7 @@ func CreateCustomer(ctx context.Context, conn *pgx.Conn, customer *models.Custom
 func UpdateCustomerByID(ctx context.Context, conn *pgx.Conn, customer *models.Customer) (int, error) {
 	_, err := dal.GetCustomerByID(ctx, conn, customer.ID)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return http.StatusCreated, dal.CreateCustomer(ctx, conn, customer)
 		}
 		return 0, err
